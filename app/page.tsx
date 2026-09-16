@@ -1695,11 +1695,11 @@ export default function Home() {
           <div className="mb-10">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6B21A8] text-lg font-bold text-white shadow-md">
-                O
+                R
               </div>
               <div>
                 <h1 className="text-xl font-extrabold tracking-tight">
-                  ORDERLY
+                  RIRI
                 </h1>
                 <p className="text-xs font-medium text-gray-400">Business Manager</p>
               </div>
