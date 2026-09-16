@@ -161,11 +161,11 @@ function StockBadge({
   );
 }
 
-function LoadingScreen({ message = "Loading Orderly..." }: { message?: string }) {
+function LoadingScreen({ message = "Loading Riri Collection..." }: { message?: string }) {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#FAF7F1] p-6 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#22214F] text-2xl font-bold text-white shadow-lg animate-bounce">
-        O
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#6B21A8] text-2xl font-bold text-white shadow-lg animate-bounce">
+        R
       </div>
       <p className="mt-4 text-sm font-semibold text-gray-600">{message}</p>
     </div>
@@ -193,7 +193,7 @@ export default function Home() {
   }
 
   // --- Business Settings State ---
-  const [businessName, setBusinessName] = useState("My Fashion Store");
+  const [businessName, setBusinessName] = useState("Riri Collection");
   const [loadingBusiness, setLoadingBusiness] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessPhone, setBusinessPhone] = useState("");
@@ -273,17 +273,17 @@ export default function Home() {
     
     w.document.write(`
       <html><head><title>${order.order_number}</title>
-      <style>body{font-family:system-ui;padding:40px;max-width:600px;margin:auto} .header{border-bottom:2px solid #22214F;padding-bottom:16px;margin-bottom:24px} .badge{display:inline-block;background:#22214F;color:white;padding:4px 12px;border-radius:20px;font-size:12px}</style>
+      <style>body{font-family:system-ui;padding:40px;max-width:600px;margin:auto} .header{border-bottom:2px solid #6B21A8;padding-bottom:16px;margin-bottom:24px} .badge{display:inline-block;background:#6B21A8;color:white;padding:4px 12px;border-radius:20px;font-size:12px}</style>
       </head><body>
         <div class="header">
-          <h1 style="margin:0;color:#22214F">${businessName}</h1>
+          <h1 style="margin:0;color:#6B21A8">${businessName}</h1>
           <p style="margin:4px 0;color:#666">${businessPhone ? "Tel: "+businessPhone : ""}</p>
         </div>
         <h2>Receipt - ${order.order_number}</h2>
         <p><strong>Customer:</strong> ${customer?.name || "Customer"} (${customer?.phone || ""})<br/>
         <strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}<br/>
         <strong>Payment:</strong> <span class="badge">${order.payment_status}</span> &nbsp; <strong>Delivery:</strong> ${order.delivery_status}</p>
-        ${items.length ? `<table style="width:100%;border-collapse:collapse;margin:20px 0"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #22214F">Item</th><th style="text-align:center;padding:8px;border-bottom:2px solid #22214F">Qty</th><th style="text-align:right;padding:8px;border-bottom:2px solid #22214F">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>` : ""}
+        ${items.length ? `<table style="width:100%;border-collapse:collapse;margin:20px 0"><thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #6B21A8">Item</th><th style="text-align:center;padding:8px;border-bottom:2px solid #6B21A8">Qty</th><th style="text-align:right;padding:8px;border-bottom:2px solid #6B21A8">Total</th></tr></thead><tbody>${itemsHtml}</tbody></table>` : ""}
         <div style="text-align:right;margin-top:24px">
           <p><strong>Total: ${formatCurrency(Number(order.total), businessCurrency)}</strong><br/>Paid: ${formatCurrency(Number(order.paid_amount), businessCurrency)}<br/>Balance: ${formatCurrency(Number(order.total)-Number(order.paid_amount), businessCurrency)}</p>
         </div>
@@ -1451,7 +1451,7 @@ export default function Home() {
           : membership.businesses;
         if (business) {
           if (membership.business_id) setBusinessId(membership.business_id);
-          setBusinessName(business.name || "My Fashion Store");
+          setBusinessName(business.name || "Riri Collection");
           setBusinessPhone(business.phone || "");
       // @ts-ignore - paystack keys may not be in old schema
       setPaystackPublicKey((business as any).paystack_public_key || "");
@@ -1470,7 +1470,7 @@ export default function Home() {
 
       const { data: businessId, error: businessError } = await supabase.rpc(
         "create_my_business",
-        { business_name: "My Fashion Store" }
+        { business_name: "Riri Collection" }
       );
 
       if (businessError || !businessId) {
@@ -1478,7 +1478,7 @@ export default function Home() {
       } else {
         setBusinessId(businessId as string);
       }
-      setBusinessName("My Fashion Store");
+      setBusinessName("Riri Collection");
       setLoadingBusiness(false);
     }
 
@@ -1548,7 +1548,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FAF7F1] text-gray-900 selection:bg-[#22214F] selection:text-white">
+    <main className="min-h-screen bg-[#FAF7F1] text-gray-900 selection:bg-[#6B21A8] selection:text-white">
       {/* Global Error Notice Banner */}
       {globalError && (
         <div className="fixed top-4 right-4 z-50 flex max-w-md items-center justify-between gap-3 rounded-2xl bg-red-600 px-4 py-3 text-white shadow-xl animate-bounce">
@@ -1577,7 +1577,7 @@ export default function Home() {
                 placeholder="Quantity to add *"
                 value={restockQuantity}
                 onChange={(e) => setRestockQuantity(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
               />
             </div>
             <div className="mt-6 flex gap-3">
@@ -1591,7 +1591,7 @@ export default function Home() {
               <button
                 onClick={submitRestock}
                 disabled={restockingProduct}
-                className="flex-1 rounded-xl bg-[#22214F] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#171643] disabled:opacity-50"
+                className="flex-1 rounded-xl bg-[#6B21A8] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#171643] disabled:opacity-50"
               >
                 {restockingProduct ? "Updating..." : "Confirm Restock"}
               </button>
@@ -1694,7 +1694,7 @@ export default function Home() {
         <aside className="hidden w-64 flex-col border-r border-gray-200 bg-white px-5 py-6 md:flex">
           <div className="mb-10">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#22214F] text-lg font-bold text-white shadow-md">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6B21A8] text-lg font-bold text-white shadow-md">
                 O
               </div>
               <div>
@@ -1715,7 +1715,7 @@ export default function Home() {
                 onClick={() => setActive(item.name)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
                   active === item.name
-                    ? "bg-[#22214F] text-white shadow-sm"
+                    ? "bg-[#6B21A8] text-white shadow-sm"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -1759,11 +1759,11 @@ export default function Home() {
                   setActive("Orders");
                   setShowOrderForm(true);
                 }}
-                className="hidden rounded-xl bg-[#22214F] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#171643] sm:block"
+                className="hidden rounded-xl bg-[#6B21A8] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#171643] sm:block"
               >
                 + New Order
               </button>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#22214F] text-xs font-bold text-white shadow-inner">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6B21A8] text-xs font-bold text-white shadow-inner">
                 {businessName.charAt(0).toUpperCase()}
               </div>
               <button
@@ -1785,7 +1785,7 @@ export default function Home() {
                 onClick={() => setActive(item.name)}
                 className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition ${
                   active === item.name
-                    ? "bg-[#22214F] text-white shadow-sm"
+                    ? "bg-[#6B21A8] text-white shadow-sm"
                     : "bg-gray-50 text-gray-600"
                 }`}
               >
@@ -1829,7 +1829,7 @@ export default function Home() {
                     <h3 className="font-bold text-sm sm:text-base">Recent Orders</h3>
                     <button
                       onClick={() => setActive("Orders")}
-                      className="text-xs font-semibold text-[#22214F] hover:underline"
+                      className="text-xs font-semibold text-[#6B21A8] hover:underline"
                     >
                       View All
                     </button>
@@ -1870,7 +1870,7 @@ export default function Home() {
                     <h3 className="font-bold text-sm sm:text-base">Stock Alerts</h3>
                     <button
                       onClick={() => setActive("Products")}
-                      className="text-xs font-semibold text-[#22214F] hover:underline"
+                      className="text-xs font-semibold text-[#6B21A8] hover:underline"
                     >
                       View Inventory
                     </button>
@@ -1915,7 +1915,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setShowOrderForm(true)}
-                  className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
+                  className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
                 >
                   + Create Order
                 </button>
@@ -1927,13 +1927,13 @@ export default function Home() {
                   value={orderSearch}
                   onChange={(e) => setOrderSearch(e.target.value)}
                   placeholder="Search by order number, customer name or phone..."
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                 />
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <select
                     value={orderPaymentFilter}
                     onChange={(e) => setOrderPaymentFilter(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#22214F] sm:w-1/2"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6B21A8] sm:w-1/2"
                   >
                     <option value="all">All Payments</option>
                     <option value="paid">Paid</option>
@@ -1943,7 +1943,7 @@ export default function Home() {
                   <select
                     value={orderDeliveryFilter}
                     onChange={(e) => setOrderDeliveryFilter(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#22214F] sm:w-1/2"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6B21A8] sm:w-1/2"
                   >
                     <option value="all">All Deliveries</option>
                     <option value="not_dispatched">Not Dispatched</option>
@@ -1964,13 +1964,13 @@ export default function Home() {
                       value={orderCustomerName}
                       onChange={(e) => setOrderCustomerName(e.target.value)}
                       placeholder="Customer name *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       value={orderCustomerPhone}
                       onChange={(e) => setOrderCustomerPhone(e.target.value)}
                       placeholder="Customer phone *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <select
                       value={orderProductId}
@@ -1989,7 +1989,7 @@ export default function Home() {
                           setOrderAmount("");
                         }
                       }}
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     >
                       <option value="">Select product *</option>
                       {products
@@ -2021,7 +2021,7 @@ export default function Home() {
                           }
                         }}
                         placeholder="Quantity"
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                       />
                     </div>
                     <input
@@ -2037,18 +2037,18 @@ export default function Home() {
                       onChange={(e) => setOrderPaidAmount(e.target.value)}
                       placeholder={`Paid amount (${getCurrencySymbol(businessCurrency)})`}
 
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       value={orderAddress}
                       onChange={(e) => setOrderAddress(e.target.value)}
                       placeholder="Delivery address"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F] md:col-span-2"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8] md:col-span-2"
                     />
                     <select
                       value={orderPaymentStatus}
                       onChange={(e) => setOrderPaymentStatus(e.target.value)}
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     >
                       <option value="pending">Payment Pending</option>
                       <option value="paid">Paid</option>
@@ -2057,7 +2057,7 @@ export default function Home() {
                     <select
                       value={orderDeliveryStatus}
                       onChange={(e) => setOrderDeliveryStatus(e.target.value)}
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     >
                       <option value="not_dispatched">Not Dispatched</option>
                       <option value="dispatched">Dispatched</option>
@@ -2075,7 +2075,7 @@ export default function Home() {
                     <button
                       onClick={saveOrder}
                       disabled={savingOrder}
-                      className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
+                      className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
                     >
                       {savingOrder
                         ? "Saving..."
@@ -2139,7 +2139,7 @@ export default function Home() {
                                 updateOrderStatus(order.id, e.target.value);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none focus:border-[#22214F] ${
+                              className={`rounded-full border px-3 py-1 text-xs font-semibold outline-none focus:border-[#6B21A8] ${
                                 order.status === "confirmed"
                                   ? "border-blue-200 bg-blue-50 text-blue-700"
                                   : order.status === "processing"
@@ -2213,7 +2213,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setShowCustomerForm(true)}
-                  className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
+                  className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
                 >
                   + Add Customer
                 </button>
@@ -2229,31 +2229,31 @@ export default function Home() {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Customer name *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="Phone number *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       value={customerEmail}
                       onChange={(e) => setCustomerEmail(e.target.value)}
                       placeholder="Email (optional)"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       value={customerAddress}
                       onChange={(e) => setCustomerAddress(e.target.value)}
                       placeholder="Address (optional)"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <textarea
                       value={customerNote}
                       onChange={(e) => setCustomerNote(e.target.value)}
                       placeholder="Note (optional)"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F] md:col-span-2"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8] md:col-span-2"
                       rows={3}
                     />
                   </div>
@@ -2267,7 +2267,7 @@ export default function Home() {
                     <button
                       onClick={saveCustomer}
                       disabled={savingCustomer}
-                      className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
+                      className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
                     >
                       {savingCustomer
                         ? "Saving..."
@@ -2419,7 +2419,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setShowProductForm(true)}
-                  className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
+                  className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
                 >
                   + Add Product
                 </button>
@@ -2458,34 +2458,34 @@ export default function Home() {
                       value={productName}
                       onChange={(e) => setProductName(e.target.value)}
                       placeholder="Product name *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       value={productSku}
                       onChange={(e) => setProductSku(e.target.value)}
                       placeholder="SKU"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       type="number"
                       value={productPrice}
                       onChange={(e) => setProductPrice(e.target.value)}
                       placeholder="Selling price *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       type="number"
                       value={productCostPrice}
                       onChange={(e) => setProductCostPrice(e.target.value)}
                       placeholder="Cost price"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       type="number"
                       value={productStock}
                       onChange={(e) => setProductStock(e.target.value)}
                       placeholder="Stock quantity"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                     <input
                       type="number"
@@ -2493,7 +2493,7 @@ export default function Home() {
                       onChange={(e) => setLowStockThreshold(Number(e.target.value))}
                       placeholder="Low stock threshold"
                       min="0"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
                   </div>
                   <div className="mt-5 flex flex-col-reverse sm:flex-row gap-3">
@@ -2506,7 +2506,7 @@ export default function Home() {
                     <button
                       onClick={saveProduct}
                       disabled={savingProduct}
-                      className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
+                      className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
                     >
                       {savingProduct
                         ? "Saving..."
@@ -2771,7 +2771,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setShowPaymentForm(true)}
-                  className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
+                  className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643]"
                 >
                   + Record Payment
                 </button>
@@ -2784,7 +2784,7 @@ export default function Home() {
                     <select
                       value={paymentOrderId}
                       onChange={(e) => setPaymentOrderId(e.target.value)}
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     >
                       <option value="">Select Order *</option>
                       {orders
@@ -2808,13 +2808,13 @@ export default function Home() {
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
                       placeholder="Payment Amount *"
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
 
                     <select
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                      className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     >
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="cash">Cash</option>
@@ -2832,7 +2832,7 @@ export default function Home() {
                     <button
                       onClick={savePayment}
                       disabled={savingPayment}
-                      className="w-full sm:w-auto rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
+                      className="w-full sm:w-auto rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white disabled:opacity-50 hover:bg-[#171643]"
                     >
                       {savingPayment ? "Saving..." : "Save Payment"}
                     </button>
@@ -2930,12 +2930,12 @@ export default function Home() {
                     placeholder="Search customer, phone, order..."
                     value={deliverySearch}
                     onChange={(e) => setDeliverySearch(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#22214F] md:flex-1"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6B21A8] md:flex-1"
                   />
                   <select
                     value={deliveryStatusFilter}
                     onChange={(e) => setDeliveryStatusFilter(e.target.value)}
-                    className="w-full md:w-auto rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full md:w-auto rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   >
                     <option value="all">All Delivery Statuses</option>
                     <option value="not_dispatched">Not Dispatched</option>
@@ -3011,7 +3011,7 @@ export default function Home() {
                             <select
                               value={delivery.delivery_status || "not_dispatched"}
                               onChange={(e) => updateDeliveryStatus(delivery.id, e.target.value)}
-                              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:border-[#22214F]"
+                              className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:border-[#6B21A8]"
                             >
                               <option value="not_dispatched">Not Dispatched</option>
                               <option value="dispatched">Dispatched</option>
@@ -3049,7 +3049,7 @@ export default function Home() {
                     type="text"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   />
                 </div>
 
@@ -3062,7 +3062,7 @@ export default function Home() {
                     value={businessPhone}
                     onChange={(e) => setBusinessPhone(e.target.value)}
                     placeholder="e.g. 08012345678"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   />
                 </div>
 
@@ -3073,7 +3073,7 @@ export default function Home() {
                   <select
                     value={businessCurrency}
                     onChange={(e) => setBusinessCurrency(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   >
                     <option value="NGN">Nigerian Naira (₦)</option>
                     <option value="USD">US Dollar ($)</option>
@@ -3089,7 +3089,7 @@ export default function Home() {
                     value={paystackPublicKey}
                     onChange={(e) => setPaystackPublicKey(e.target.value)}
                     placeholder="pk_live_xxx or pk_test_xxx"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   />
                 </div>
 
@@ -3102,7 +3102,7 @@ export default function Home() {
                     value={paystackSecretKey}
                     onChange={(e) => setPaystackSecretKey(e.target.value)}
                     placeholder="sk_live_xxx or sk_test_xxx"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   />
                   <p className="mt-1 text-[11px] text-gray-400">Get from https://dashboard.paystack.com/#/settings/developer. We only send it to your own API route, never to client logs.</p>
                 </div>
@@ -3116,7 +3116,7 @@ export default function Home() {
                     min="0"
                     value={lowStockThreshold}
                     onChange={(e) => setLowStockThreshold(Number(e.target.value))}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#22214F]"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                   />
                 </div>
 
@@ -3124,7 +3124,7 @@ export default function Home() {
                   <button
                     onClick={saveBusinessSettings}
                     disabled={savingBusiness}
-                    className="w-full rounded-xl bg-[#22214F] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643] disabled:opacity-50"
+                    className="w-full rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643] disabled:opacity-50"
                   >
                     {savingBusiness ? "Saving Changes..." : "Save Changes"}
                   </button>
@@ -3135,7 +3135,7 @@ export default function Home() {
         </section>
       </div>
     
-      <button onClick={() => { setActive("Orders"); setShowOrderForm(true); }} className="fixed bottom-6 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#22214F] text-2xl font-bold text-white shadow-2xl md:hidden active:scale-95 transition">+</button>
+      <button onClick={() => { setActive("Orders"); setShowOrderForm(true); }} className="fixed bottom-6 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#6B21A8] text-2xl font-bold text-white shadow-2xl md:hidden active:scale-95 transition">+</button>
       <style>{`.scrollbar-none::-webkit-scrollbar{display:none}.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}`}</style>
 </main>
   );
