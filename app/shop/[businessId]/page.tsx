@@ -54,9 +54,32 @@ export default function PublicShopPage() {
         if (cErr) throw cErr; customerId = newCust.id;
       }
       const orderNumber = `RIRI-${Date.now().toString().slice(-6)}`;
-      const { data: order, error: oErr } = await supabase.from("orders").insert({ business_id: businessId, customer_id: customerId, total_amount: total, order_number: orderNumber, status: "pending", delivery_address: customer.address.trim() }).select("id, order_number").single();
+      // EXACT columns that exist in your orders table
+      const { data: order, error: oErr } = await supabase.from("orders").insert({
+        business_id: businessId,
+        customer_id: customerId,
+        order_number: orderNumber,
+        status: "new",
+        payment_status: "pending",
+        delivery_status: "not_dispatched",
+        source: "whatsapp",
+        subtotal: total,
+        total: total,
+        total_amount: total,
+        delivery_fee: 0,
+        delivery_address: customer.address.trim(),
+        notes: `Customer: ${customer.name} - ${customer.phone}`
+      }).select("id, order_number").single();
       if (oErr) throw oErr;
-      const items = cart.map(c => ({ order_id: order.id, product_id: c.id, quantity: c.qty, price: c.price, business_id: businessId }));
+      // EXACT columns that exist in your order_items table
+      const items = cart.map(c => ({
+        order_id: order.id,
+        product_id: c.id,
+        product_name: c.name,
+        quantity: c.qty,
+        unit_price: c.price,
+        line_total: c.price * c.qty
+      }));
       const { error: iErr } = await supabase.from("order_items").insert(items);
       if (iErr) throw iErr;
       setSuccess(`Order ${order.order_number} placed! Total ₦${total.toLocaleString()}. ${businessName} will contact you on WhatsApp at ${customer.phone} shortly.`);
@@ -88,7 +111,6 @@ export default function PublicShopPage() {
                 <div className="mt-2 flex justify-between items-center"><span className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</span><button onClick={() => addToCart(p)} className="rounded-xl bg-[#6B21A8] px-3 py-1.5 text-xs font-bold text-white">+ Add</button></div>
               </div>
             ))}
-            {products.length===0 && <p className="text-sm text-gray-400 col-span-full">No products yet.</p>}
           </div>
         </div>
         <div className="lg:col-span-1">
