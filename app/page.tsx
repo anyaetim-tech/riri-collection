@@ -2171,6 +2171,37 @@ export default function Home() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                sendWhatsAppReceipt(order);
+                              }}
+                              className="rounded-full bg-green-600 px-3 py-1 font-bold text-white hover:bg-green-700"
+                              title="Send WhatsApp Receipt"
+                            >
+                              🟢 WhatsApp
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                generatePaystackLink(order);
+                              }}
+                              disabled={generatingPaystack === order.id}
+                              className="rounded-full bg-[#6B21A8] px-3 py-1 font-bold text-white hover:bg-[#4a1575] disabled:opacity-50"
+                              title="Generate Paystack Pay Link"
+                            >
+                              {generatingPaystack === order.id ? "..." : "💜 Pay Link"}
+                            </button>
+                            {paystackLinks[order.id] && (
+                              <a
+                                href={paystackLinks[order.id]}
+                                target="_blank"
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded-full bg-black px-3 py-1 font-bold text-white hover:bg-gray-800"
+                              >
+                                Open Pay
+                              </a>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 startEditOrder(order);
                               }}
                               className="rounded-full border border-gray-200 px-3 py-1 font-semibold text-gray-700 hover:bg-gray-100"
