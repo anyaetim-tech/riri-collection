@@ -53,14 +53,15 @@ export default function PublicShopPage() {
         const { data: newCust, error: cErr } = await supabase.from("customers").insert({ business_id: businessId, name: customer.name.trim(), phone: customer.phone.trim(), address: customer.address.trim() }).select("id").single();
         if (cErr) throw cErr; customerId = newCust.id;
       }
-      const { data: order, error: oErr } = await supabase.from("orders").insert({ business_id: businessId, customer_id: customerId, total_amount: total, status: "pending", delivery_address: customer.address.trim() }).select("id").single();
+      const orderNumber = `RIRI-${Date.now().toString().slice(-6)}`;
+      const { data: order, error: oErr } = await supabase.from("orders").insert({ business_id: businessId, customer_id: customerId, total_amount: total, order_number: orderNumber, status: "pending", delivery_address: customer.address.trim() }).select("id, order_number").single();
       if (oErr) throw oErr;
       const items = cart.map(c => ({ order_id: order.id, product_id: c.id, quantity: c.qty, price: c.price, business_id: businessId }));
       const { error: iErr } = await supabase.from("order_items").insert(items);
       if (iErr) throw iErr;
-      setSuccess(`Order placed! Order #${order.id.slice(0,8)}. ${businessName} will contact you on WhatsApp at ${customer.phone} shortly.`);
+      setSuccess(`Order ${order.order_number} placed! Total ₦${total.toLocaleString()}. ${businessName} will contact you on WhatsApp at ${customer.phone} shortly.`);
       setCart([]); setCustomer({ name: "", phone: "", address: "" });
-    } catch (e: any) { alert("Could not place order: " + e.message); }
+    } catch (e: any) { alert("Could not place order: " + e.message); console.log(e); }
     finally { setPlacing(false); }
   }
 
@@ -87,7 +88,7 @@ export default function PublicShopPage() {
                 <div className="mt-2 flex justify-between items-center"><span className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</span><button onClick={() => addToCart(p)} className="rounded-xl bg-[#6B21A8] px-3 py-1.5 text-xs font-bold text-white">+ Add</button></div>
               </div>
             ))}
-            {products.length===0 && <p className="text-sm text-gray-400 col-span-full">No products yet — ID {businessId} has no active products.</p>}
+            {products.length===0 && <p className="text-sm text-gray-400 col-span-full">No products yet.</p>}
           </div>
         </div>
         <div className="lg:col-span-1">
