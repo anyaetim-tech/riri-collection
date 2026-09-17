@@ -1761,6 +1761,34 @@ export default function Home() {
             <p className="mt-0.5 text-xs text-gray-500">
               Currency: {businessCurrency} ({getCurrencySymbol(businessCurrency)})
             </p>
+            
+            {/* SHOP LINK - CLICKABLE */}
+            <div className="mt-3 space-y-2">
+              <a
+                href={businessId ? `/shop/${businessId}` : `https://riri-collection-plum.vercel.app/shop/09689ea5-f703-41bf-b7e2-b1c6a601258f`}
+                target="_blank"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#6B21A8] px-3 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#4a1575] transition"
+              >
+                🛒 View My Shop
+              </a>
+              <a
+                href="/admin"
+                target="_blank"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-black px-3 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-gray-800 transition"
+              >
+                📦 Pro Admin
+              </a>
+              <button
+                onClick={() => {
+                  const url = businessId ? `${window.location.origin}/shop/${businessId}` : 'https://riri-collection-plum.vercel.app/shop/09689ea5-f703-41bf-b7e2-b1c6a601258f';
+                  navigator.clipboard.writeText(url);
+                  alert('Shop link copied! ' + url);
+                }}
+                className="w-full text-[10px] text-gray-400 hover:text-[#6B21A8] transition"
+              >
+                Copy shop link
+              </button>
+            </div>
           </div>
           <button
             onClick={handleSignOut}
