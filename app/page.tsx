@@ -201,7 +201,58 @@ export default function Home() {
   const [paystackSecretKey, setPaystackSecretKey] = useState("");
   const [businessCurrency, setBusinessCurrency] = useState("NGN");
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
+
   const [savingBusiness, setSavingBusiness] = useState(false);
+
+  // --- TEAM (SAFE - will not break if RPC missing) ---
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
+
+  async function loadTeam() {
+    if (!businessId) return;
+    setLoadingTeam(true);
+    try {
+      const { data } = await supabase.from("business_members").select("user_id, role, created_at").eq("business_id", businessId);
+      if (data) setTeamMembers(data);
+    } catch (e) {
+      console.log("Team load skipped", e);
+    }
+    setLoadingTeam(false);
+  }
+
+  async function addTeamMember() {
+    if (!newMemberEmail.trim() || !businessId) {
+      setGlobalError("Enter staff email");
+      return;
+    }
+    setAddingMember(true);
+    setGlobalError(null);
+    try {
+      // Try RPC first
+      const { data, error } = await supabase.rpc("add_team_member_by_email", {
+        member_email: newMemberEmail.trim().toLowerCase(),
+        target_business_id: businessId,
+      });
+      if (error) throw error;
+      alert((data as string) || "Added!");
+      setNewMemberEmail("");
+      loadTeam();
+    } catch (e: any) {
+      // Fallback: tell user to make sure staff signed up, and RLS is disabled
+      setGlobalError("Could not add via RPC: " + e.message + ". Make sure: 1) Staff signed up at /login, 2) You ran DIAGNOSE_FIX_ANYAETIM.sql to disable RLS. Then try again.");
+    } finally {
+      setAddingMember(false);
+    }
+  }
+
+  useEffect(() => {
+    if (active === "Settings" && businessId) {
+      loadTeam();
+    }
+  }, [active, businessId]);
+
 
   function formatCurrency(amount: number, businessCurrency) {
     const locale = businessCurrency === "NGN" ? "en-NG" : "en-US";
@@ -3061,7 +3112,20 @@ export default function Home() {
 
           {/* --- SETTINGS VIEW --- */}
           {active === "Settings" && (
-            <div className="p-4 sm:p-6 md:p-8 max-w-2xl">
+            <div className="p-4 sm:p-6 md:p-8 max-w-3xl space-y-6">
+              <div className="rounded-2xl border-2 border-[#6B21A8]/20 bg-white p-6 shadow-sm">
+                <h4 className="text-base font-bold text-gray-900">👥 Team Login (Safe)</h4>
+                <p className="mt-1 text-xs text-gray-500">Staff: Create account at /login first. Then owner adds email here. This will NOT break your main login.</p>
+                <div className="mt-4 flex gap-2">
+                  <input type="email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="staff email" className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
+                  <button onClick={addTeamMember} disabled={addingMember} className="rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-bold text-white hover:bg-[#4a1575] disabled:opacity-50">{addingMember ? "..." : "+ Add"}</button>
+                </div>
+                <div className="mt-3 text-xs text-gray-400">
+                  {loadingTeam ? "Loading..." : teamMembers.map((m:any) => <div key={m.user_id} className="py-1">{m.user_id.slice(0,8)}... - {m.role}</div>)}
+                </div>
+              </div>
+              <div className="p-4 sm:p-6 md:p-8 max-w-2xl border-0 p-0">
+
               <div className="mb-8">
                 <h3 className="text-2xl font-bold tracking-tight md:text-3xl text-gray-900">
                   Business Settings
