@@ -1809,6 +1809,23 @@ export default function Home() {
             <div>
               <p className="text-xs sm:text-sm text-gray-500">Welcome back 👋</p>
               <h2 className="text-lg font-bold sm:text-xl text-gray-900">{active}</h2>
+              {/* MOBILE: View My Shop - VISIBLE ON PHONE */}
+              <div className="md:hidden mt-2 flex gap-2">
+                <a
+                  href={businessId ? `/shop/${businessId}` : `https://riri-collection-plum.vercel.app/shop/09689ea5-f703-41bf-b7e2-b1c6a601258f`}
+                  target="_blank"
+                  className="inline-flex items-center gap-1 rounded-full bg-[#6B21A8] px-3 py-1 text-[11px] font-bold text-white"
+                >
+                  🛒 View My Shop
+                </a>
+                <a
+                  href="/admin"
+                  target="_blank"
+                  className="inline-flex items-center gap-1 rounded-full bg-black px-3 py-1 text-[11px] font-bold text-white"
+                >
+                  📦 Pro Admin
+                </a>
+              </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <button
