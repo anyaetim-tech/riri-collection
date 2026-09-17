@@ -2,29 +2,43 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Product = { id: string; name: string; price: number; image_url?: string; business_id: string; quantity?: number };
+type Product = { id: string; name: string; price: number; business_id: string; stock_quantity?: number; sku?: string };
 type CartItem = Product & { qty: number };
 
 export default function PublicShopPage({ params }: { params: { businessId: string } }) {
   const supabase = createClient();
   const businessId = params.businessId;
-  const [businessName, setBusinessName] = useState("Loading shop...");
+  const [businessName, setBusinessName] = useState("Loading...");
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState({ name: "", phone: "", address: "" });
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
+  const [debug, setDebug] = useState("");
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data: biz } = await supabase.from("businesses").select("name").eq("id", businessId).single();
+      setDebug("Loading...");
+      const { data: biz, error: bizErr } = await supabase.from("businesses").select("name").eq("id", businessId).single();
       if (biz) setBusinessName(biz.name);
-      else setBusinessName("Riri Collection");
-      // FIXED: No stock filter - show all products
-      const { data: prods, error } = await supabase.from("products").select("id, name, price, image_url, business_id").eq("business_id", businessId).order("created_at", { ascending: false });
-      if (error) console.log(error);
+      else { setBusinessName("Riri Collection"); setDebug("Biz err: "+bizErr?.message); }
+      
+      // FIXED: select only columns that exist in your table, NO image_url
+      const { data: prods, error: prodErr } = await supabase
+        .from("products")
+        .select("id, name, price, business_id, stock_quantity, sku, active")
+        .eq("business_id", businessId)
+        .eq("active", true)
+        .order("created_at", { ascending: false });
+      
+      if (prodErr) {
+        setDebug("Products error: " + prodErr.message);
+        console.log(prodErr);
+      } else {
+        setDebug(`Found ${prods?.length||0} products for ${businessId}`);
+      }
       if (prods) setProducts(prods as any);
       setLoading(false);
     }
@@ -64,13 +78,13 @@ export default function PublicShopPage({ params }: { params: { businessId: strin
     finally { setPlacing(false); }
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAF7F1] p-6 text-center">Loading {businessName} shop...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAF7F1] p-6 text-center">Loading {businessName} shop... {debug}</div>;
 
   return (
     <div className="min-h-screen bg-[#FAF7F1]">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-xl bg-[#6B21A8] text-white flex items-center justify-center font-bold">R</div><div><div className="font-bold">{businessName}</div><div className="text-xs text-gray-500">Powered by Riri Collection</div></div></div>
+          <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-xl bg-[#6B21A8] text-white flex items-center justify-center font-bold">R</div><div><div className="font-bold">{businessName}</div><div className="text-xs text-gray-500">Powered by Riri Collection - {debug}</div></div></div>
           <div className="text-sm font-bold">🛒 {cart.length} items - ₦{total.toLocaleString()}</div>
         </div>
       </header>
@@ -81,12 +95,13 @@ export default function PublicShopPage({ params }: { params: { businessId: strin
           <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
             {products.map(p => (
               <div key={p.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="h-32 rounded-xl bg-gray-100 flex items-center justify-center text-3xl overflow-hidden">{p.image_url ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover rounded-xl"/> : "👗"}</div>
+                <div className="h-32 rounded-xl bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-4xl">👗</div>
                 <h3 className="mt-3 font-bold text-sm line-clamp-1">{p.name}</h3>
+                <p className="text-xs text-gray-400">{p.sku || ""} • Stock: {p.stock_quantity||0}</p>
                 <div className="mt-2 flex justify-between items-center"><span className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</span><button onClick={() => addToCart(p)} className="rounded-xl bg-[#6B21A8] px-3 py-1.5 text-xs font-bold text-white">+ Add</button></div>
               </div>
             ))}
-            {products.length===0 && <p className="col-span-full text-sm text-gray-400">No products yet — this shop ID is empty. Use the main ID: 09689ea5-f703-41bf-b7e2-b1c6a601258f</p>}
+            {products.length===0 && <div className="col-span-full rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm"><p className="font-bold">Debug: {debug}</p><p className="mt-2 text-xs">Shop ID: {businessId}</p><p className="text-xs">If this shows 0 but Table Editor shows 8, RLS is still blocking public. Run DISABLE RLS SQL again.</p></div>}
           </div>
         </div>
         <div className="lg:col-span-1">
