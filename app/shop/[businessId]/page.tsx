@@ -145,17 +145,22 @@ export default function ShopPage() {
     <div className="min-h-screen bg-[#FAF7F1]">
       {/* HEADER WITH CART BUTTON */}
       <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3 hover:opacity-80">
           <div className="h-9 w-9 rounded-xl bg-[#6B21A8] text-white flex items-center justify-center font-black">R</div>
           <div>
             <p className="font-black text-sm leading-none">{businessName}</p>
             <p className="text-[10px] text-gray-500">Abuja • Nationwide delivery</p>
           </div>
+        </a>
+        <div className="flex items-center gap-2">
+          <a href="/" className="hidden md:flex rounded-full bg-gray-100 text-gray-700 px-4 py-2 text-xs font-bold">
+            ← Dashboard
+          </a>
+          <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2 text-sm font-bold flex items-center gap-2">
+            🛒 Cart
+            {cartCount > 0 && <span className="bg-[#6B21A8] text-white text-[10px] px-2 py-0.5 rounded-full">{cartCount}</span>}
+          </button>
         </div>
-        <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2 text-sm font-bold flex items-center gap-2">
-          🛒 Cart
-          {cartCount > 0 && <span className="bg-[#6B21A8] text-white text-[10px] px-2 py-0.5 rounded-full">{cartCount}</span>}
-        </button>
       </header>
 
       {/* SUCCESS MESSAGE */}
