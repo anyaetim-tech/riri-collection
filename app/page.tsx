@@ -201,58 +201,36 @@ export default function Home() {
   const [paystackSecretKey, setPaystackSecretKey] = useState("");
   const [businessCurrency, setBusinessCurrency] = useState("NGN");
   const [lowStockThreshold, setLowStockThreshold] = useState(5);
-
   const [savingBusiness, setSavingBusiness] = useState(false);
-
-  // --- TEAM (SAFE - will not break if RPC missing) ---
+  // --- TEAM (SAFE) ---
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [addingMember, setAddingMember] = useState(false);
-
   async function loadTeam() {
     if (!businessId) return;
     setLoadingTeam(true);
     try {
       const { data } = await supabase.from("business_members").select("user_id, role, created_at").eq("business_id", businessId);
       if (data) setTeamMembers(data);
-    } catch (e) {
-      console.log("Team load skipped", e);
-    }
+    } catch {}
     setLoadingTeam(false);
   }
-
   async function addTeamMember() {
-    if (!newMemberEmail.trim() || !businessId) {
-      setGlobalError("Enter staff email");
-      return;
-    }
+    if (!newMemberEmail.trim() || !businessId) { setGlobalError("Enter staff email"); return; }
     setAddingMember(true);
     setGlobalError(null);
     try {
-      // Try RPC first
-      const { data, error } = await supabase.rpc("add_team_member_by_email", {
-        member_email: newMemberEmail.trim().toLowerCase(),
-        target_business_id: businessId,
-      });
+      const { data, error } = await supabase.rpc("add_team_member_by_email", { member_email: newMemberEmail.trim().toLowerCase(), target_business_id: businessId });
       if (error) throw error;
       alert((data as string) || "Added!");
       setNewMemberEmail("");
       loadTeam();
-    } catch (e: any) {
-      // Fallback: tell user to make sure staff signed up, and RLS is disabled
-      setGlobalError("Could not add via RPC: " + e.message + ". Make sure: 1) Staff signed up at /login, 2) You ran DIAGNOSE_FIX_ANYAETIM.sql to disable RLS. Then try again.");
-    } finally {
-      setAddingMember(false);
-    }
+    } catch (e:any) {
+      setGlobalError("Could not add: " + e.message);
+    } finally { setAddingMember(false); }
   }
-
-  useEffect(() => {
-    if (active === "Settings" && businessId) {
-      loadTeam();
-    }
-  }, [active, businessId]);
-
+  useEffect(() => { if (active === "Settings" && businessId) loadTeam(); }, [active, businessId]);
 
   function formatCurrency(amount: number, businessCurrency) {
     const locale = businessCurrency === "NGN" ? "en-NG" : "en-US";
@@ -3113,115 +3091,59 @@ export default function Home() {
           {/* --- SETTINGS VIEW --- */}
           {active === "Settings" && (
             <div className="p-4 sm:p-6 md:p-8 max-w-3xl space-y-6">
-              <div className="rounded-2xl border-2 border-[#6B21A8]/20 bg-white p-6 shadow-sm">
-                <h4 className="text-base font-bold text-gray-900">👥 Team Login (Safe)</h4>
-                <p className="mt-1 text-xs text-gray-500">Staff: Create account at /login first. Then owner adds email here. This will NOT break your main login.</p>
-                <div className="mt-4 flex gap-2">
-                  <input type="email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="staff email" className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
-                  <button onClick={addTeamMember} disabled={addingMember} className="rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-bold text-white hover:bg-[#4a1575] disabled:opacity-50">{addingMember ? "..." : "+ Add"}</button>
-                </div>
-                <div className="mt-3 text-xs text-gray-400">
-                  {loadingTeam ? "Loading..." : teamMembers.map((m:any) => <div key={m.user_id} className="py-1">{m.user_id.slice(0,8)}... - {m.role}</div>)}
-                </div>
+              <div>
+                <h3 className="text-2xl font-bold tracking-tight md:text-3xl text-gray-900">Business Settings</h3>
+                <p className="mt-1 text-sm text-gray-500">Update your brand and manage team access.</p>
               </div>
-              <div className="p-4 sm:p-6 md:p-8 max-w-2xl border-0 p-0">
 
-              <div className="mb-8">
-                <h3 className="text-2xl font-bold tracking-tight md:text-3xl text-gray-900">
-                  Business Settings
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Update your brand information and system defaults.
-                </p>
+              <div className="rounded-2xl border-2 border-[#6B21A8]/20 bg-white p-6 shadow-sm">
+                <h4 className="text-base font-bold text-gray-900">👥 Team Login (Safe - Won't Break)</h4>
+                <p className="mt-1 text-xs text-gray-500">Step 1: Staff creates account at /login - Create Account. Step 2: You add their email here.</p>
+                <div className="mt-4 flex gap-2">
+                  <input type="email" value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)} placeholder="staff email e.g. ada@gmail.com" className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
+                  <button onClick={addTeamMember} disabled={addingMember} className="rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-bold text-white hover:bg-[#4a1575] disabled:opacity-50">{addingMember ? "..." : "+ Add Staff"}</button>
+                </div>
+                {loadingTeam ? <p className="mt-3 text-xs text-gray-400">Loading team...</p> : (
+                  <div className="mt-3 space-y-1">
+                    {teamMembers.map((m:any) => (
+                      <div key={m.user_id} className="flex justify-between rounded-lg bg-gray-50 px-3 py-2 text-xs"><span>{m.user_id.slice(0,8)}... - {m.role}</span><span className="text-green-600">active</span></div>
+                    ))}
+                    {teamMembers.length===0 && <p className="text-xs text-gray-400">Only you - no staff yet.</p>}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Business Name
-                  </label>
-                  <input
-                    type="text"
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
-                  />
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Business Name</label>
+                  <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Business Phone Number
-                  </label>
-                  <input
-                    type="text"
-                    value={businessPhone}
-                    onChange={(e) => setBusinessPhone(e.target.value)}
-                    placeholder="e.g. 08012345678"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
-                  />
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Business Phone Number</label>
+                  <input type="text" value={businessPhone} onChange={(e) => setBusinessPhone(e.target.value)} placeholder="e.g. 08012345678" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Currency Symbol
-                  </label>
-                  <select
-                    value={businessCurrency}
-                    onChange={(e) => setBusinessCurrency(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
-                  >
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Currency Symbol</label>
+                  <select value={businessCurrency} onChange={(e) => setBusinessCurrency(e.target.value)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]">
                     <option value="NGN">Nigerian Naira (₦)</option>
                     <option value="USD">US Dollar ($)</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Paystack Public Key (for checkout)
-                  </label>
-                  <input
-                    type="text"
-                    value={paystackPublicKey}
-                    onChange={(e) => setPaystackPublicKey(e.target.value)}
-                    placeholder="pk_live_xxx or pk_test_xxx"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
-                  />
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Paystack Public Key</label>
+                  <input type="text" value={paystackPublicKey} onChange={(e) => setPaystackPublicKey(e.target.value)} placeholder="pk_live_xxx or pk_test_xxx" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Paystack Secret Key (kept secure, only used server-side)
-                  </label>
-                  <input
-                    type="password"
-                    value={paystackSecretKey}
-                    onChange={(e) => setPaystackSecretKey(e.target.value)}
-                    placeholder="sk_live_xxx or sk_test_xxx"
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
-                  />
-                  <p className="mt-1 text-[11px] text-gray-400">Get from https://dashboard.paystack.com/#/settings/developer. We only send it to your own API route, never to client logs.</p>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Paystack Secret Key</label>
+                  <input type="password" value={paystackSecretKey} onChange={(e) => setPaystackSecretKey(e.target.value)} placeholder="sk_live_xxx" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">
-                    Default Low Stock Warning Threshold
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={lowStockThreshold}
-                    onChange={(e) => setLowStockThreshold(Number(e.target.value))}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
-                  />
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Default Low Stock Threshold</label>
+                  <input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(Number(e.target.value))} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
                 </div>
-
                 <div className="pt-4">
-                  <button
-                    onClick={saveBusinessSettings}
-                    disabled={savingBusiness}
-                    className="w-full rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643] disabled:opacity-50"
-                  >
-                    {savingBusiness ? "Saving Changes..." : "Save Changes"}
+                  <button onClick={saveBusinessSettings} disabled={savingBusiness} className="w-full rounded-xl bg-[#6B21A8] px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#171643] disabled:opacity-50">
+                    {savingBusiness ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </div>
