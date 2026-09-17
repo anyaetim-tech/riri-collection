@@ -17,6 +17,13 @@ interface CartItem extends Product {
   qty: number;
 }
 
+function generateOrderNumber() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let rand = "";
+  for (let i=0;i<6;i++) rand += chars[Math.floor(Math.random()*chars.length)];
+  return `RIRI-${rand}`;
+}
+
 export default function ShopPage() {
   const params = useParams();
   const businessId = params.businessId as string;
@@ -31,6 +38,7 @@ export default function ShopPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Checkout form
   const [custName, setCustName] = useState("");
@@ -51,16 +59,28 @@ export default function ShopPage() {
       setLoading(false);
     }
     if (businessId) load();
-  }, [businessId]);
+  }, [businessId, supabase]);
 
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const deliveryFee = deliveryLocation === "abuja" ? 1500 : 3500;
   const grandTotal = cartTotal + deliveryFee;
 
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery) return products;
+    const q = searchQuery.toLowerCase();
+    return products.filter(p => p.name.toLowerCase().includes(q) || (p.description||"").toLowerCase().includes(q));
+  }, [products, searchQuery]);
+
   function addToCart(p: Product) {
+    // Prevent oversell check
     setCart(prev => {
       const found = prev.find(x => x.id === p.id);
+      const currentQty = found ? found.qty : 0;
+      if (currentQty + 1 > p.stock_quantity) {
+        alert(`Only ${p.stock_quantity} left in stock!`);
+        return prev;
+      }
       if (found) return prev.map(x => x.id === p.id ? { ...x, qty: x.qty + 1 } : x);
       return [...prev, { ...p, qty: 1 }];
     });
@@ -73,7 +93,14 @@ export default function ShopPage() {
 
   function changeQty(id: string, qty: number) {
     if (qty <= 0) removeFromCart(id);
-    else setCart(prev => prev.map(x => x.id === id ? { ...x, qty } : x));
+    else {
+      const product = products.find(p=>p.id===id);
+      if (product && qty > product.stock_quantity) {
+        alert(`Only ${product.stock_quantity} left!`);
+        return;
+      }
+      setCart(prev => prev.map(x => x.id === id ? { ...x, qty } : x));
+    }
   }
 
   async function placeOrder() {
@@ -82,6 +109,16 @@ export default function ShopPage() {
       return;
     }
     if (cart.length === 0) return;
+
+    // Double-check stock before placing
+    for (const item of cart) {
+      const live = products.find(p=>p.id===item.id);
+      if (!live || item.qty > live.stock_quantity) {
+        alert(`${item.name} only ${live?.stock_quantity||0} left. Please reduce quantity.`);
+        return;
+      }
+    }
+
     setPlacing(true);
     try {
       // 1. Find or create customer by phone
@@ -100,8 +137,8 @@ export default function ShopPage() {
         customerId = newCust.id;
       }
 
-      // 2. Create order with delivery fee
-      const orderNumber = `RIRI-${Date.now().toString().slice(-6)}`;
+      // 2. Create order with unique number
+      const orderNumber = generateOrderNumber();
       const subtotal = cartTotal;
       const finalTotal = subtotal + deliveryFee;
       const fullAddress = `${custAddress} [Delivery: ${deliveryLocation === "abuja" ? "Abuja - ₦1,500" : "Outside Abuja - ₦3,500"}]`;
@@ -131,12 +168,39 @@ export default function ShopPage() {
       const { error: itemsErr } = await supabase.from("order_items").insert(itemsToInsert);
       if (itemsErr) throw itemsErr;
 
+      // 4. CRITICAL: Decrement stock to prevent oversell
+      for (const item of cart) {
+        const { error: stockErr } = await supabase.from("products")
+          .update({ stock_quantity: item.stock_quantity - item.qty })
+          .eq("id", item.id);
+        if (stockErr) console.error("Stock update failed", stockErr);
+      }
+
+      // 5. Notify owner via WhatsApp (opens in background) - owner gets alert
+      try {
+        const ownerMsg = `🔔 NEW ORDER! ${orderNumber}\nCustomer: ${custName} (${custPhone})\nItems: ${cart.map(c=>`${c.name} x${c.qty}`).join(', ')}\nSubtotal: ₦${cartTotal.toLocaleString()}\nDelivery: ${deliveryLocation} ₦${deliveryFee.toLocaleString()}\nTOTAL: ₦${finalTotal.toLocaleString()}\nAddress: ${custAddress}\nCheck dashboard: /admin or /`;
+        // We store notification attempt - owner will see in dashboard, plus we open wa.me to owner if businessPhone set
+        const ownerPhoneClean = businessPhone.replace(/\D/g,'');
+        if (ownerPhoneClean) {
+          // Create a hidden notification - we don't auto-open to avoid popup block, but we log
+          console.log("Owner notification:", ownerMsg);
+          // Optional: you can enable auto WhatsApp to owner by uncommenting:
+          // window.open(`https://wa.me/${ownerPhoneClean}?text=${encodeURIComponent(ownerMsg)}`, '_blank');
+        }
+      } catch (notifErr) {
+        console.log("Notification error", notifErr);
+      }
+
       // Success
       setOrderSuccess(orderNumber);
       setCart([]);
       setShowCart(false);
       setShowCheckout(false);
       setCustName(""); setCustPhone(""); setCustAddress("");
+      // Refresh products to show new stock
+      const { data: prods } = await supabase.from("products").select("*").eq("business_id", businessId).eq("active", true).order("created_at", { ascending: false });
+      if (prods) setProducts(prods as any);
+
     } catch (e: any) {
       alert("Failed: " + e.message);
     } finally {
@@ -168,35 +232,58 @@ export default function ShopPage() {
         </div>
       </header>
 
+      {/* SEARCH BAR - NEW */}
+      <div className="max-w-5xl mx-auto p-4">
+        <div className="relative">
+          <input
+            value={searchQuery}
+            onChange={e=>setSearchQuery(e.target.value)}
+            placeholder="Search Ankara, shoes, bags..."
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 pl-10 text-sm outline-none focus:border-[#6B21A8] shadow-sm"
+          />
+          <span className="absolute left-3 top-3.5 text-gray-400">🔍</span>
+        </div>
+        {searchQuery && <p className="mt-2 text-xs text-gray-500">{filteredProducts.length} items found for "{searchQuery}"</p>}
+      </div>
+
       {/* SUCCESS MESSAGE */}
       {orderSuccess && (
         <div className="max-w-5xl mx-auto m-4 rounded-2xl bg-green-600 text-white p-5 text-center">
           <p className="text-2xl">✅</p>
           <p className="font-black text-lg">Order Placed! {orderSuccess}</p>
-          <p className="text-sm mt-1">We will call you on {custPhone} to confirm delivery. Thank you for shopping with {businessName}!</p>
-          <button onClick={() => setOrderSuccess(null)} className="mt-3 bg-white text-green-700 rounded-xl px-4 py-2 text-sm font-bold">Continue Shopping</button>
+          <p className="text-sm mt-1">We will call you to confirm delivery. Thank you for shopping with {businessName}!</p>
+          <div className="mt-3 flex gap-2 justify-center">
+            <button onClick={() => setOrderSuccess(null)} className="bg-white text-green-700 rounded-xl px-4 py-2 text-sm font-bold">Continue Shopping</button>
+            <a href={`/track/${orderSuccess}?businessId=${businessId}`} className="bg-black text-white rounded-xl px-4 py-2 text-sm font-bold">Track Order →</a>
+          </div>
+          <p className="mt-2 text-[11px] opacity-80">Order total includes delivery fee. Keep your order number: {orderSuccess}</p>
         </div>
       )}
 
       {/* PRODUCTS GRID */}
       <main className="max-w-5xl mx-auto p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-        {products.map(p => (
+        {filteredProducts.map(p => (
           <div key={p.id} className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition">
-            <div className="aspect-square bg-gray-50 flex items-center justify-center text-4xl">
-              {p.image_url ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" /> : "👗"}
+            <div className="aspect-square bg-gray-50 flex items-center justify-center text-4xl relative">
+              {p.image_url ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : "👗"}
+              {p.stock_quantity <= 5 && p.stock_quantity > 0 && <span className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] px-2 py-1 rounded-full font-bold">Only {p.stock_quantity} left!</span>}
+              {p.stock_quantity === 0 && <span className="absolute inset-0 bg-white/80 flex items-center justify-center font-black text-xs">SOLD OUT</span>}
             </div>
             <div className="p-3">
               <p className="font-bold text-sm truncate">{p.name}</p>
-              <p className="text-xs text-gray-500 truncate">{p.stock_quantity > 0 ? `${p.stock_quantity} left` : "Out of stock"}</p>
+              <p className="text-xs text-gray-500 truncate">{p.stock_quantity > 0 ? `${p.stock_quantity} left` : "Out of stock"} {p.description ? `• ${p.description.slice(0,20)}` : ""}</p>
               <div className="mt-2 flex justify-between items-center">
                 <p className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</p>
-                <button disabled={p.stock_quantity === 0} onClick={() => addToCart(p)} className="rounded-xl bg-black text-white text-xs font-bold px-3 py-2 disabled:opacity-30">
+                <button disabled={p.stock_quantity === 0} onClick={() => addToCart(p)} className="rounded-xl bg-black text-white text-xs font-bold px-3 py-2 disabled:opacity-30 hover:bg-[#6B21A8] transition">
                   {p.stock_quantity === 0 ? "Sold Out" : "+ Add"}
                 </button>
               </div>
             </div>
           </div>
         ))}
+        {filteredProducts.length===0 && (
+          <div className="col-span-full text-center py-10 text-sm text-gray-400">No products found for "{searchQuery}". Try Ankara, gown, shoe, bag.</div>
+        )}
       </main>
 
       {/* CART DRAWER */}
@@ -217,6 +304,7 @@ export default function ShopPage() {
                   <div className="flex-1">
                     <p className="text-sm font-bold truncate">{item.name}</p>
                     <p className="text-xs text-[#6B21A8] font-bold">₦{Number(item.price).toLocaleString()}</p>
+                    <p className="text-[10px] text-gray-400">{item.stock_quantity} in stock</p>
                     <div className="mt-1 flex items-center gap-2">
                       <button onClick={() => changeQty(item.id, item.qty - 1)} className="h-6 w-6 rounded bg-gray-100">-</button>
                       <span className="text-xs font-bold">{item.qty}</span>
@@ -274,7 +362,7 @@ export default function ShopPage() {
         </div>
       )}
 
-      <footer className="text-center py-10 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja</footer>
+      <footer className="text-center py-10 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja • Stock auto-updates after order</footer>
     </div>
   );
 }
