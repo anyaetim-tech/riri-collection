@@ -1,152 +1,252 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Product = { id: string; name: string; price: number; business_id: string; stock_quantity?: number; sku?: string; image_url?: string; description?: string };
-type CartItem = Product & { qty: number };
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  stock_quantity: number;
+  image_url?: string;
+  description?: string;
+  active: boolean;
+}
 
-// CHANGE THIS TO YOUR WHATSAPP NUMBER (with country code, no +) e.g. 2349064301203
-const OWNER_WHATSAPP = "2349064301203";
+interface CartItem extends Product {
+  qty: number;
+}
 
-export default function PublicShopPage() {
+export default function ShopPage() {
   const params = useParams();
   const businessId = params.businessId as string;
-  const supabase = createClient();
-  const [businessName, setBusinessName] = useState("Riri Collection");
+  const supabase = useMemo(() => createClient(), []);
+  
   const [products, setProducts] = useState<Product[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [businessName, setBusinessName] = useState("Riri Collection");
+  const [businessPhone, setBusinessPhone] = useState("");
   const [loading, setLoading] = useState(true);
-  const [customer, setCustomer] = useState({ name: "", phone: "", address: "" });
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
   const [placing, setPlacing] = useState(false);
-  const [success, setSuccess] = useState<{orderNo: string, total: number} | null>(null);
+  const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+  
+  // Checkout form
+  const [custName, setCustName] = useState("");
+  const [custPhone, setCustPhone] = useState("");
+  const [custAddress, setCustAddress] = useState("");
 
   useEffect(() => {
-    if (!businessId) return;
     async function load() {
       setLoading(true);
-      const { data: biz } = await supabase.from("businesses").select("name").eq("id", businessId).single();
-      if (biz) setBusinessName(biz.name);
-      const { data: prods } = await supabase.from("products").select("id, name, price, business_id, stock_quantity, sku, active, image_url, description").eq("business_id", businessId).eq("active", true).order("created_at", { ascending: false });
+      const { data: biz } = await supabase.from("businesses").select("*").eq("id", businessId).single();
+      if (biz) {
+        setBusinessName(biz.name || "Riri Collection");
+        setBusinessPhone(biz.phone || "");
+      }
+      const { data: prods } = await supabase.from("products").select("*").eq("business_id", businessId).eq("active", true).order("created_at", { ascending: false });
       if (prods) setProducts(prods as any);
       setLoading(false);
     }
-    load();
+    if (businessId) load();
   }, [businessId]);
 
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+
   function addToCart(p: Product) {
-    if ((p.stock_quantity||0) <=0) { alert(p.name + " out of stock"); return; }
     setCart(prev => {
       const found = prev.find(x => x.id === p.id);
-      if (found) return prev.map(x => x.id === p.id ? { ...x, qty: Math.min(x.qty + 1, p.stock_quantity||100) } : x);
+      if (found) return prev.map(x => x.id === p.id ? { ...x, qty: x.qty + 1 } : x);
       return [...prev, { ...p, qty: 1 }];
     });
+    setShowCart(true);
   }
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const totalItems = cart.reduce((s,i)=>s+i.qty,0);
+
+  function removeFromCart(id: string) {
+    setCart(prev => prev.filter(x => x.id !== id));
+  }
+
+  function changeQty(id: string, qty: number) {
+    if (qty <= 0) removeFromCart(id);
+    else setCart(prev => prev.map(x => x.id === id ? { ...x, qty } : x));
+  }
 
   async function placeOrder() {
-    if (!customer.name || !customer.phone) { alert("Enter your name and WhatsApp number"); return; }
-    if (cart.length === 0) { alert("Cart empty"); return; }
+    if (!custName || !custPhone || !custAddress) {
+      alert("Please fill name, phone, address");
+      return;
+    }
+    if (cart.length === 0) return;
     setPlacing(true);
     try {
+      // 1. Find or create customer by phone
       let customerId: string;
-      const { data: existing } = await supabase.from("customers").select("id").eq("business_id", businessId).eq("phone", customer.phone.trim()).limit(1).single();
-      if (existing) customerId = existing.id;
-      else {
-        const { data: newCust, error: cErr } = await supabase.from("customers").insert({ business_id: businessId, name: customer.name.trim(), phone: customer.phone.trim(), address: customer.address.trim() }).select("id").single();
-        if (cErr) throw cErr; customerId = newCust.id;
+      const { data: existing } = await supabase.from("customers").select("id").eq("phone", custPhone).eq("business_id", businessId).maybeSingle();
+      if (existing) {
+        customerId = existing.id;
+      } else {
+        const { data: newCust, error: custErr } = await supabase.from("customers").insert({
+          business_id: businessId,
+          name: custName,
+          phone: custPhone,
+          address: custAddress,
+        }).select("id").single();
+        if (custErr) throw custErr;
+        customerId = newCust.id;
       }
+
+      // 2. Create order
       const orderNumber = `RIRI-${Date.now().toString().slice(-6)}`;
-      const { data: order, error: oErr } = await supabase.from("orders").insert({
-        business_id: businessId, customer_id: customerId, order_number: orderNumber,
-        status: "new", payment_status: "pending", delivery_status: "not_dispatched",
-        source: "whatsapp", subtotal: total, total: total, total_amount: total, delivery_fee: 0,
-        delivery_address: customer.address.trim(), notes: `Customer: ${customer.name} - ${customer.phone} - Items: ${cart.map(c=>c.name+' x'+c.qty).join(', ')}`
-      }).select("id, order_number").single();
-      if (oErr) throw oErr;
-      const items = cart.map(c => ({ order_id: order.id, product_id: c.id, product_name: c.name, quantity: c.qty, unit_price: c.price, line_total: c.price * c.qty }));
-      const { error: iErr } = await supabase.from("order_items").insert(items);
-      if (iErr) throw iErr;
-      // Decrease stock
-      for (let c of cart) {
-        await supabase.from("products").update({ stock_quantity: Math.max(0, (c.stock_quantity||0) - c.qty) }).eq("id", c.id);
-      }
-      setSuccess({orderNo: order.order_number, total});
-      setCart([]); 
-    } catch (e: any) { alert("Could not place order: " + e.message); }
-    finally { setPlacing(false); }
+      const subtotal = cartTotal;
+      const { data: order, error: orderErr } = await supabase.from("orders").insert({
+        business_id: businessId,
+        customer_id: customerId,
+        order_number: orderNumber,
+        status: "pending",
+        payment_status: "unpaid",
+        delivery_status: "not_dispatched",
+        delivery_address: custAddress,
+        subtotal,
+        total: subtotal,
+        paid_amount: 0,
+      }).select("id").single();
+      if (orderErr) throw orderErr;
+
+      // 3. Create order_items
+      const itemsToInsert = cart.map(c => ({
+        order_id: order.id,
+        product_id: c.id,
+        product_name: c.name,
+        quantity: c.qty,
+        unit_price: c.price,
+        line_total: c.price * c.qty,
+      }));
+      const { error: itemsErr } = await supabase.from("order_items").insert(itemsToInsert);
+      if (itemsErr) throw itemsErr;
+
+      // Success
+      setOrderSuccess(orderNumber);
+      setCart([]);
+      setShowCart(false);
+      setShowCheckout(false);
+      setCustName(""); setCustPhone(""); setCustAddress("");
+    } catch (e: any) {
+      alert("Failed: " + e.message);
+    } finally {
+      setPlacing(false);
+    }
   }
 
-  function openOwnerWhatsApp() {
-    if (!success) return;
-    const msg = `New order ${success.orderNo}%0AFrom: ${customer.name || 'Customer'}%0ATotal: ₦${success.total.toLocaleString()}%0ACheck admin: https://riri-collection-plum.vercel.app/admin`;
-    window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${msg}`, "_blank");
-  }
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAF7F1]">Loading {businessName}...</div>;
-
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#FAF7F1] flex items-center justify-center p-6">
-        <div className="bg-white rounded-[24px] border p-8 max-w-md w-full text-center shadow">
-          <div className="text-5xl">🎉</div>
-          <h2 className="text-2xl font-black mt-3">Order {success.orderNo} Placed!</h2>
-          <p className="text-sm text-gray-500 mt-2">Total ₦{success.total.toLocaleString()}. We will contact you on WhatsApp shortly.</p>
-          <div className="mt-6 space-y-3">
-            <button onClick={openOwnerWhatsApp} className="w-full rounded-xl bg-[#25D366] py-3 font-bold text-white">Notify Vendor on WhatsApp →</button>
-            <button onClick={()=>setSuccess(null)} className="w-full rounded-xl bg-gray-100 py-3 font-bold">Continue Shopping</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAF7F1]"><p className="animate-pulse font-bold text-[#6B21A8]">Loading {businessName} shop...</p></div>;
 
   return (
     <div className="min-h-screen bg-[#FAF7F1]">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3"><div className="h-9 w-9 rounded-xl bg-[#6B21A8] text-white flex items-center justify-center font-bold">R</div><div><div className="font-bold">{businessName}</div><div className="text-xs text-gray-500">Abuja • Fast Delivery</div></div></div>
-          <div className="text-sm font-bold bg-black text-white px-4 py-2 rounded-full">🛒 {totalItems} • ₦{total.toLocaleString()}</div>
-        </div>
-      </header>
-      <main className="max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <h2 className="text-2xl font-black">Shop {businessName}</h2>
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-4">
-            {products.map(p => (
-              <div key={p.id} className="rounded-2xl border bg-white p-3 shadow-sm flex flex-col">
-                <div className="h-36 rounded-xl bg-gray-100 overflow-hidden flex items-center justify-center">
-                  {p.image_url ? <img src={p.image_url} alt={p.name} className="h-full w-full object-cover"/> : <span className="text-4xl">👗</span>}
-                </div>
-                <h3 className="mt-3 font-bold text-sm line-clamp-2">{p.name}</h3>
-                <p className="text-[11px] text-gray-400 mt-1">{p.stock_quantity||0} in stock • {p.sku||''}</p>
-                <div className="mt-auto pt-3 flex justify-between items-center"><span className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</span><button onClick={() => addToCart(p)} className="rounded-xl bg-[#6B21A8] px-3 py-1.5 text-xs font-bold text-white">+ Add</button></div>
-              </div>
-            ))}
+      {/* HEADER WITH CART BUTTON */}
+      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-[#6B21A8] text-white flex items-center justify-center font-black">R</div>
+          <div>
+            <p className="font-black text-sm leading-none">{businessName}</p>
+            <p className="text-[10px] text-gray-500">Abuja • Nationwide delivery</p>
           </div>
         </div>
-        <div className="lg:col-span-1">
-          <div className="rounded-[24px] border bg-white p-6 shadow-sm sticky top-24">
-            <h3 className="font-bold">Your Order ({totalItems})</h3>
-            {cart.length===0 ? <p className="mt-3 text-sm text-gray-400">Cart empty</p> : (
-              <>
-                <div className="mt-4 space-y-3 max-h-60 overflow-auto">
-                  {cart.map(c => (<div key={c.id} className="flex justify-between text-sm"><span className="flex-1">{c.name} x{c.qty}</span><span>₦{(c.price*c.qty).toLocaleString()}</span></div>))}
+        <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2 text-sm font-bold flex items-center gap-2">
+          🛒 Cart
+          {cartCount > 0 && <span className="bg-[#6B21A8] text-white text-[10px] px-2 py-0.5 rounded-full">{cartCount}</span>}
+        </button>
+      </header>
+
+      {/* SUCCESS MESSAGE */}
+      {orderSuccess && (
+        <div className="max-w-5xl mx-auto m-4 rounded-2xl bg-green-600 text-white p-5 text-center">
+          <p className="text-2xl">✅</p>
+          <p className="font-black text-lg">Order Placed! {orderSuccess}</p>
+          <p className="text-sm mt-1">We will call you on {custPhone} to confirm delivery. Thank you for shopping with {businessName}!</p>
+          <button onClick={() => setOrderSuccess(null)} className="mt-3 bg-white text-green-700 rounded-xl px-4 py-2 text-sm font-bold">Continue Shopping</button>
+        </div>
+      )}
+
+      {/* PRODUCTS GRID */}
+      <main className="max-w-5xl mx-auto p-4 grid grid-cols-2 md:grid-cols-3 gap-4">
+        {products.map(p => (
+          <div key={p.id} className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition">
+            <div className="aspect-square bg-gray-50 flex items-center justify-center text-4xl">
+              {p.image_url ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" /> : "👗"}
+            </div>
+            <div className="p-3">
+              <p className="font-bold text-sm truncate">{p.name}</p>
+              <p className="text-xs text-gray-500 truncate">{p.stock_quantity > 0 ? `${p.stock_quantity} left` : "Out of stock"}</p>
+              <div className="mt-2 flex justify-between items-center">
+                <p className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</p>
+                <button disabled={p.stock_quantity === 0} onClick={() => addToCart(p)} className="rounded-xl bg-black text-white text-xs font-bold px-3 py-2 disabled:opacity-30">
+                  {p.stock_quantity === 0 ? "Sold Out" : "+ Add"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </main>
+
+      {/* CART DRAWER */}
+      {showCart && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowCart(false)} />
+          <div className="relative w-full max-w-sm bg-white h-full flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-black">Your Cart ({cartCount})</h3>
+              <button onClick={() => setShowCart(false)} className="h-8 w-8 rounded-full bg-gray-100">✕</button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 space-y-3">
+              {cart.length === 0 ? <p className="text-sm text-gray-400 text-center mt-10">Cart empty. Add products!</p> : cart.map(item => (
+                <div key={item.id} className="flex gap-3 border rounded-xl p-3">
+                  <div className="h-12 w-12 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden">
+                    {item.image_url ? <img src={item.image_url} className="w-full h-full object-cover" /> : "👗"}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold truncate">{item.name}</p>
+                    <p className="text-xs text-[#6B21A8] font-bold">₦{Number(item.price).toLocaleString()}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <button onClick={() => changeQty(item.id, item.qty - 1)} className="h-6 w-6 rounded bg-gray-100">-</button>
+                      <span className="text-xs font-bold">{item.qty}</span>
+                      <button onClick={() => changeQty(item.id, item.qty + 1)} className="h-6 w-6 rounded bg-gray-100">+</button>
+                      <button onClick={() => removeFromCart(item.id)} className="ml-auto text-[10px] text-red-500">Remove</button>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-4 border-t pt-3 flex justify-between font-black"><span>Total</span><span>₦{total.toLocaleString()}</span></div>
-                <div className="mt-6 space-y-3">
-                  <input value={customer.name} onChange={e=>setCustomer({...customer, name:e.target.value})} placeholder="Full Name" className="w-full rounded-xl border px-4 py-3 text-sm"/>
-                  <input value={customer.phone} onChange={e=>setCustomer({...customer, phone:e.target.value})} placeholder="WhatsApp Number (080...)" className="w-full rounded-xl border px-4 py-3 text-sm"/>
-                  <input value={customer.address} onChange={e=>setCustomer({...customer, address:e.target.value})} placeholder="Delivery Address, Abuja" className="w-full rounded-xl border px-4 py-3 text-sm"/>
-                  <button onClick={placeOrder} disabled={placing} className="w-full rounded-xl bg-[#6B21A8] py-3 text-sm font-bold text-white">{placing ? "Placing..." : "Place Order →"}</button>
-                  <p className="text-[11px] text-center text-gray-400">Pay on delivery • Fast delivery in Abuja</p>
-                </div>
-              </>
+              ))}
+            </div>
+            {cart.length > 0 && (
+              <div className="p-4 border-t space-y-3">
+                <div className="flex justify-between font-black"><span>Total</span><span>₦{cartTotal.toLocaleString()}</span></div>
+                <button onClick={() => { setShowCart(false); setShowCheckout(true); }} className="w-full rounded-xl bg-[#6B21A8] text-white py-3 font-bold">Checkout →</button>
+                <a href={`https://wa.me/${businessPhone.replace(/\D/g,'')}?text=Hi! I want to order: ${cart.map(c => `${c.name} x${c.qty}`).join(', ')} = ₦${cartTotal.toLocaleString()}`} target="_blank" className="block text-center w-full rounded-xl bg-green-600 text-white py-3 font-bold">Order via WhatsApp</a>
+              </div>
             )}
           </div>
         </div>
-      </main>
+      )}
+
+      {/* CHECKOUT MODAL */}
+      {showCheckout && (
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCheckout(false)} />
+          <div className="relative w-full max-w-md bg-white rounded-t-3xl md:rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-auto">
+            <h3 className="font-black text-lg">Delivery Details</h3>
+            <p className="text-xs text-gray-500">Order total ₦{cartTotal.toLocaleString()} for {cartCount} items. Pay on delivery.</p>
+            <input value={custName} onChange={e => setCustName(e.target.value)} placeholder="Full Name" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
+            <input value={custPhone} onChange={e => setCustPhone(e.target.value)} placeholder="Phone e.g. 08012345678" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
+            <textarea value={custAddress} onChange={e => setCustAddress(e.target.value)} placeholder="Delivery address in Abuja + landmark" rows={3} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
+            <button onClick={placeOrder} disabled={placing} className="w-full rounded-xl bg-black text-white py-3 font-bold disabled:opacity-50">
+              {placing ? "Placing order..." : `Place Order • ₦${cartTotal.toLocaleString()}`}
+            </button>
+            <button onClick={() => setShowCheckout(false)} className="w-full text-xs text-gray-400">Back to cart</button>
+          </div>
+        </div>
+      )}
+
+      <footer className="text-center py-10 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja</footer>
     </div>
   );
 }
