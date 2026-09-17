@@ -105,7 +105,7 @@ export default function ShopPage() {
         customer_id: customerId,
         order_number: orderNumber,
         status: "pending",
-        payment_status: "unpaid",
+        payment_status: "pending",
         delivery_status: "not_dispatched",
         delivery_address: custAddress,
         subtotal,
