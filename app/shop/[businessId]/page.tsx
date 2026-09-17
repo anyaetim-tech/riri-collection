@@ -36,6 +36,7 @@ export default function ShopPage() {
   const [custName, setCustName] = useState("");
   const [custPhone, setCustPhone] = useState("");
   const [custAddress, setCustAddress] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState<"abuja"|"outside">("abuja");
 
   useEffect(() => {
     async function load() {
@@ -54,6 +55,8 @@ export default function ShopPage() {
 
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+  const deliveryFee = deliveryLocation === "abuja" ? 1500 : 3500;
+  const grandTotal = cartTotal + deliveryFee;
 
   function addToCart(p: Product) {
     setCart(prev => {
@@ -97,9 +100,11 @@ export default function ShopPage() {
         customerId = newCust.id;
       }
 
-      // 2. Create order
+      // 2. Create order with delivery fee
       const orderNumber = `RIRI-${Date.now().toString().slice(-6)}`;
       const subtotal = cartTotal;
+      const finalTotal = subtotal + deliveryFee;
+      const fullAddress = `${custAddress} [Delivery: ${deliveryLocation === "abuja" ? "Abuja - ₦1,500" : "Outside Abuja - ₦3,500"}]`;
       const { data: order, error: orderErr } = await supabase.from("orders").insert({
         business_id: businessId,
         customer_id: customerId,
@@ -107,9 +112,9 @@ export default function ShopPage() {
         status: "pending",
         payment_status: "pending",
         delivery_status: "not_dispatched",
-        delivery_address: custAddress,
+        delivery_address: fullAddress,
         subtotal,
-        total: subtotal,
+        total: finalTotal,
         paid_amount: 0,
       }).select("id").single();
       if (orderErr) throw orderErr;
@@ -224,9 +229,9 @@ export default function ShopPage() {
             </div>
             {cart.length > 0 && (
               <div className="p-4 border-t space-y-3">
-                <div className="flex justify-between font-black"><span>Total</span><span>₦{cartTotal.toLocaleString()}</span></div>
+                <div className="space-y-1 text-sm"><div className="flex justify-between"><span>Items</span><span>₦{cartTotal.toLocaleString()}</span></div><div className="flex justify-between text-gray-500"><span>Delivery ({deliveryLocation === "abuja" ? "Abuja" : "Outside"})</span><span>₦{deliveryFee.toLocaleString()}</span></div><div className="flex justify-between font-black text-base pt-2 border-t"><span>Total</span><span>₦{grandTotal.toLocaleString()}</span></div></div>
                 <button onClick={() => { setShowCart(false); setShowCheckout(true); }} className="w-full rounded-xl bg-[#6B21A8] text-white py-3 font-bold">Checkout →</button>
-                <a href={`https://wa.me/${businessPhone.replace(/\D/g,'')}?text=Hi! I want to order: ${cart.map(c => `${c.name} x${c.qty}`).join(', ')} = ₦${cartTotal.toLocaleString()}`} target="_blank" className="block text-center w-full rounded-xl bg-green-600 text-white py-3 font-bold">Order via WhatsApp</a>
+                <a href={`https://wa.me/${businessPhone.replace(/\D/g,'')}?text=Hi! I want to order: ${cart.map(c => `${c.name} x${c.qty}`).join(', ')} + Delivery ₦${deliveryFee} = ₦${grandTotal.toLocaleString()} - ${deliveryLocation}`} target="_blank" className="block text-center w-full rounded-xl bg-green-600 text-white py-3 font-bold">Order via WhatsApp</a>
               </div>
             )}
           </div>
@@ -239,12 +244,30 @@ export default function ShopPage() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCheckout(false)} />
           <div className="relative w-full max-w-md bg-white rounded-t-3xl md:rounded-2xl p-6 space-y-4 max-h-[90vh] overflow-auto">
             <h3 className="font-black text-lg">Delivery Details</h3>
-            <p className="text-xs text-gray-500">Order total ₦{cartTotal.toLocaleString()} for {cartCount} items. Pay on delivery.</p>
+            
+            {/* DELIVERY FEE SELECTOR */}
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setDeliveryLocation("abuja")} className={`rounded-xl border-2 px-3 py-3 text-left ${deliveryLocation==="abuja" ? "border-[#6B21A8] bg-[#6B21A8]/5" : "border-gray-200"}`}>
+                <p className="text-xs font-bold">📍 Abuja</p>
+                <p className="text-[11px] text-gray-500">₦1,500 fee • 24hrs</p>
+              </button>
+              <button onClick={() => setDeliveryLocation("outside")} className={`rounded-xl border-2 px-3 py-3 text-left ${deliveryLocation==="outside" ? "border-[#6B21A8] bg-[#6B21A8]/5" : "border-gray-200"}`}>
+                <p className="text-xs font-bold">🇳🇬 Outside Abuja</p>
+                <p className="text-[11px] text-gray-500">₦3,500 fee • 2-3 days</p>
+              </button>
+            </div>
+
+            <div className="rounded-xl bg-gray-50 p-3 text-xs space-y-1">
+              <div className="flex justify-between"><span>Items ({cartCount})</span><span>₦{cartTotal.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span>Delivery fee</span><span>₦{deliveryFee.toLocaleString()}</span></div>
+              <div className="flex justify-between font-black text-sm pt-1 border-t"><span>Total to pay</span><span className="text-[#6B21A8]">₦{grandTotal.toLocaleString()}</span></div>
+            </div>
+
             <input value={custName} onChange={e => setCustName(e.target.value)} placeholder="Full Name" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
             <input value={custPhone} onChange={e => setCustPhone(e.target.value)} placeholder="Phone e.g. 08012345678" className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
-            <textarea value={custAddress} onChange={e => setCustAddress(e.target.value)} placeholder="Delivery address in Abuja + landmark" rows={3} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
+            <textarea value={custAddress} onChange={e => setCustAddress(e.target.value)} placeholder={deliveryLocation==="abuja" ? "Delivery address in Abuja + landmark" : "Full address + state + LGA"} rows={3} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]" />
             <button onClick={placeOrder} disabled={placing} className="w-full rounded-xl bg-black text-white py-3 font-bold disabled:opacity-50">
-              {placing ? "Placing order..." : `Place Order • ₦${cartTotal.toLocaleString()}`}
+              {placing ? "Placing order..." : `Place Order • ₦${grandTotal.toLocaleString()}`}
             </button>
             <button onClick={() => setShowCheckout(false)} className="w-full text-xs text-gray-400">Back to cart</button>
           </div>
