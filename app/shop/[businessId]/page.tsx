@@ -172,7 +172,7 @@ export default function ShopPage() {
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search gowns, bags..." className="rounded-full bg-gray-100 px-4 py-2.5 pl-9 text-sm w-56 outline-none focus:bg-white focus:ring-2 focus:ring-black/10 transition" />
               <span className="absolute left-3.5 top-3 text-gray-400 text-sm">🔍</span>
             </div>
-            <a href={`/dashboard/${businessId}`} className="hidden md:flex text-xs font-black px-4 py-2.5 rounded-full bg-gray-100 hover:bg-black hover:text-white transition">Dashboard</a>
+            <a href={`/`}  className="hidden md:flex text-xs font-black px-4 py-2.5 rounded-full bg-gray-100 hover:bg-black hover:text-white transition">Dashboard</a>
             <a href="/" className="hidden md:flex text-xs font-bold px-3 py-2.5 rounded-full border border-black/10 hover:bg-black hover:text-white transition">Home</a>
             <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2.5 text-sm font-black flex items-center gap-1.5">
               🛒 <span className="hidden md:inline">Cart</span> {cartCount > 0 && <span className="bg-[#6B21A8] text-white text-[10px] h-5 min-w-5 px-1 flex items-center justify-center rounded-full">{cartCount}</span>}
@@ -184,7 +184,7 @@ export default function ShopPage() {
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search Ankara, gown..." className="rounded-full bg-gray-100 px-4 py-2.5 pl-9 text-sm w-full outline-none" />
             <span className="absolute left-3.5 top-3 text-gray-400 text-sm">🔍</span>
           </div>
-          <a href={`/dashboard/${businessId}`} className="text-xs font-black px-3 py-2.5 rounded-full bg-gray-100">Dashboard</a>
+          <a href={`/`}  className="text-xs font-black px-3 py-2.5 rounded-full bg-gray-100">Dashboard</a>
         </div>
       </header>
 
@@ -321,7 +321,7 @@ export default function ShopPage() {
         </div>
       )}
 
-      <footer className="text-center py-12 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja • Stock auto-updates • <a href={`/dashboard/${businessId}`} className="underline font-black">Dashboard</a></footer>
+      <footer className="text-center py-12 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja • Stock auto-updates • <a href={`/`}  className="underline font-black">Dashboard</a></footer>
     </div>
   );
 }
