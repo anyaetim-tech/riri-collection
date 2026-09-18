@@ -1,27 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export async function GET() {
+  return NextResponse.json({
+    status: "Riri Collections Paystack Initialize is LIVE ✅",
+    message: "This endpoint needs POST with email and amount. This GET is just to prove it's deployed.",
+  }, { status: 200 });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { email, amount, orderId, orderNumber } = await req.json();
-
     const secret = process.env.PAYSTACK_SECRET_KEY;
     
-    // SAFE MODE: If you haven't registered for Paystack yet, don't crash
     if (!secret) {
-      return NextResponse.json(
-        { 
-          error: "Paystack not configured yet - finish CAC registration first. App still works, just manual payment for now.",
-          safe: true 
-        },
-        { status: 200 }
-      );
+      return NextResponse.json({ error: "Paystack not configured yet - finish CAC registration first. Safe mode." }, { status: 200 });
     }
 
     if (!email || !amount) {
       return NextResponse.json({ error: "Email and amount required" }, { status: 400 });
     }
 
-    // Amount in kobo for Paystack
     const amountInKobo = Math.round(Number(amount) * 100);
 
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -34,25 +32,12 @@ export async function POST(req: NextRequest) {
         email,
         amount: amountInKobo,
         reference: `${orderNumber || orderId}-${Date.now()}`,
-        metadata: {
-          order_id: orderId,
-          order_number: orderNumber,
-          custom_fields: [
-            {
-              display_name: "Order Number",
-              variable_name: "order_number",
-              value: orderNumber,
-            },
-          ],
-        },
+        metadata: { order_id: orderId, order_number: orderNumber },
       }),
     });
 
     const data = await response.json();
-
-    if (!data.status) {
-      return NextResponse.json({ error: data.message }, { status: 400 });
-    }
+    if (!data.status) return NextResponse.json({ error: data.message }, { status: 400 });
 
     return NextResponse.json({
       authorization_url: data.data.authorization_url,
