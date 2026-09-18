@@ -23,6 +23,7 @@ interface Product {
   stock_quantity: number;
   low_stock_threshold: number;
   active: boolean;
+  image_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -399,6 +400,36 @@ export default function Home() {
     }
   }
 
+  function handleProductImageSelect(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setGlobalError("Please select an image file (PNG, JPG)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setGlobalError("Image too large - max 5MB");
+      return;
+    }
+    setProductImageFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setProductImagePreview(previewUrl);
+  }
+
+  function handleDrag(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleProductImageSelect(file);
+  }
+
+
 
 
   // --- Domain Data States ---
@@ -526,6 +557,7 @@ export default function Home() {
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
@@ -745,7 +777,17 @@ export default function Home() {
         throw new Error("Business could not be found.");
       }
 
-      const payload = {
+      let imageUrl: string | null = null;
+      // auto-upload if file selected
+      if (productImageFile && businessId) {
+        imageUrl = await uploadProductImage(productImageFile, businessId);
+        if (!imageUrl) {
+          setSavingProduct(false);
+          return;
+        }
+      }
+
+      const payload: any = {
         business_id: membership.business_id,
         name: productName.trim(),
         sku: productSku.trim() || null,
@@ -754,6 +796,7 @@ export default function Home() {
         stock_quantity: Number(productStock || 0),
         low_stock_threshold: Number(lowStockThreshold || 0),
       };
+      if (imageUrl) payload.image_url = imageUrl;
 
       if (editingProductId) {
         const { error } = await supabase
@@ -763,14 +806,9 @@ export default function Home() {
           .eq("business_id", membership.business_id);
         if (error) throw new Error(error.message);
       } else {
-        let imageUrl = null;
-        if (productImageFile && businessId) {
-          imageUrl = await uploadProductImage(productImageFile, businessId);
-        }
         const { error } = await supabase.from("products").insert({
           ...payload,
           active: true,
-          image_url: imageUrl,
         });
         if (error) throw new Error(error.message);
       }
@@ -792,6 +830,8 @@ export default function Home() {
     setEditingProductId(product.id);
     setProductName(product.name || "");
     setProductSku(product.sku || "");
+    setProductImagePreview((product as any).image_url || null);
+    setProductImageFile(null);
     setProductPrice(product.price != null ? String(product.price) : "");
     setProductCostPrice(
       product.cost_price != null ? String(product.cost_price) : ""
@@ -809,7 +849,11 @@ export default function Home() {
 
   function cancelProductForm() {
     setProductImageFile(null);
+    if (productImagePreview && productImagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(productImagePreview);
+    }
     setProductImagePreview(null);
+    setDragActive(false);
 
     setEditingProductId(null);
     setProductName("");
@@ -2139,6 +2183,31 @@ export default function Home() {
                       <option value="failed">Failed</option>
                     </select>
                   </div>
+                  {/* AUTO IMAGE UPLOAD - NEW */}
+                  <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`mt-5 rounded-2xl border-2 border-dashed p-5 text-center transition-all ${dragActive ? "border-[#6B21A8] bg-[#6B21A8]/5" : "border-gray-200 bg-gray-50/50"}`}
+                  >
+                    <p className="text-sm font-semibold text-gray-700">{dragActive ? "Drop image here..." : "Product Image (Auto Upload)"}</p>
+                    <p className="mt-1 text-xs text-gray-500">Drag & drop or click to select - uploads automatically to product-images bucket</p>
+                    <div className="mt-3 flex justify-center">
+                      <label className="cursor-pointer rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white hover:bg-gray-800">
+                        {uploadingImage ? "Uploading... ⏳" : productImagePreview ? "Change Image" : "Choose Image"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleProductImageSelect(f); }} />
+                      </label>
+                    </div>
+                    {productImagePreview && (
+                      <div className="mt-4 flex flex-col items-center">
+                        <img src={productImagePreview} alt="Preview" className="h-36 w-36 rounded-xl object-cover border shadow-sm" />
+                        <p className="mt-2 text-xs font-semibold text-green-600">✓ Ready to upload on Save</p>
+                        <button type="button" onClick={() => { setProductImageFile(null); setProductImagePreview(null); }} className="mt-1 text-xs text-red-500 underline">Remove image</button>
+                      </div>
+                    )}
+                    {uploadingImage && <p className="mt-2 text-xs text-gray-500">Uploading to Supabase...</p>}
+                  </div>
                   <div className="mt-5 flex flex-col-reverse sm:flex-row gap-3">
                     <button
                       onClick={cancelOrderForm}
@@ -2361,6 +2430,31 @@ export default function Home() {
                       className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8] md:col-span-2"
                       rows={3}
                     />
+                  </div>
+                  {/* AUTO IMAGE UPLOAD - NEW */}
+                  <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`mt-5 rounded-2xl border-2 border-dashed p-5 text-center transition-all ${dragActive ? "border-[#6B21A8] bg-[#6B21A8]/5" : "border-gray-200 bg-gray-50/50"}`}
+                  >
+                    <p className="text-sm font-semibold text-gray-700">{dragActive ? "Drop image here..." : "Product Image (Auto Upload)"}</p>
+                    <p className="mt-1 text-xs text-gray-500">Drag & drop or click to select - uploads automatically to product-images bucket</p>
+                    <div className="mt-3 flex justify-center">
+                      <label className="cursor-pointer rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white hover:bg-gray-800">
+                        {uploadingImage ? "Uploading... ⏳" : productImagePreview ? "Change Image" : "Choose Image"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleProductImageSelect(f); }} />
+                      </label>
+                    </div>
+                    {productImagePreview && (
+                      <div className="mt-4 flex flex-col items-center">
+                        <img src={productImagePreview} alt="Preview" className="h-36 w-36 rounded-xl object-cover border shadow-sm" />
+                        <p className="mt-2 text-xs font-semibold text-green-600">✓ Ready to upload on Save</p>
+                        <button type="button" onClick={() => { setProductImageFile(null); setProductImagePreview(null); }} className="mt-1 text-xs text-red-500 underline">Remove image</button>
+                      </div>
+                    )}
+                    {uploadingImage && <p className="mt-2 text-xs text-gray-500">Uploading to Supabase...</p>}
                   </div>
                   <div className="mt-5 flex flex-col-reverse sm:flex-row gap-3">
                     <button
@@ -2600,6 +2694,31 @@ export default function Home() {
                       min="0"
                       className="rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-[#6B21A8]"
                     />
+                  </div>
+                  {/* AUTO IMAGE UPLOAD - NEW */}
+                  <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`mt-5 rounded-2xl border-2 border-dashed p-5 text-center transition-all ${dragActive ? "border-[#6B21A8] bg-[#6B21A8]/5" : "border-gray-200 bg-gray-50/50"}`}
+                  >
+                    <p className="text-sm font-semibold text-gray-700">{dragActive ? "Drop image here..." : "Product Image (Auto Upload)"}</p>
+                    <p className="mt-1 text-xs text-gray-500">Drag & drop or click to select - uploads automatically to product-images bucket</p>
+                    <div className="mt-3 flex justify-center">
+                      <label className="cursor-pointer rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white hover:bg-gray-800">
+                        {uploadingImage ? "Uploading... ⏳" : productImagePreview ? "Change Image" : "Choose Image"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleProductImageSelect(f); }} />
+                      </label>
+                    </div>
+                    {productImagePreview && (
+                      <div className="mt-4 flex flex-col items-center">
+                        <img src={productImagePreview} alt="Preview" className="h-36 w-36 rounded-xl object-cover border shadow-sm" />
+                        <p className="mt-2 text-xs font-semibold text-green-600">✓ Ready to upload on Save</p>
+                        <button type="button" onClick={() => { setProductImageFile(null); setProductImagePreview(null); }} className="mt-1 text-xs text-red-500 underline">Remove image</button>
+                      </div>
+                    )}
+                    {uploadingImage && <p className="mt-2 text-xs text-gray-500">Uploading to Supabase...</p>}
                   </div>
                   <div className="mt-5 flex flex-col-reverse sm:flex-row gap-3">
                     <button
@@ -2926,6 +3045,31 @@ export default function Home() {
                       <option value="card">POS / Card</option>
                       <option value="other">Other</option>
                     </select>
+                  </div>
+                  {/* AUTO IMAGE UPLOAD - NEW */}
+                  <div
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    className={`mt-5 rounded-2xl border-2 border-dashed p-5 text-center transition-all ${dragActive ? "border-[#6B21A8] bg-[#6B21A8]/5" : "border-gray-200 bg-gray-50/50"}`}
+                  >
+                    <p className="text-sm font-semibold text-gray-700">{dragActive ? "Drop image here..." : "Product Image (Auto Upload)"}</p>
+                    <p className="mt-1 text-xs text-gray-500">Drag & drop or click to select - uploads automatically to product-images bucket</p>
+                    <div className="mt-3 flex justify-center">
+                      <label className="cursor-pointer rounded-xl bg-black px-4 py-2.5 text-xs font-bold text-white hover:bg-gray-800">
+                        {uploadingImage ? "Uploading... ⏳" : productImagePreview ? "Change Image" : "Choose Image"}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if(f) handleProductImageSelect(f); }} />
+                      </label>
+                    </div>
+                    {productImagePreview && (
+                      <div className="mt-4 flex flex-col items-center">
+                        <img src={productImagePreview} alt="Preview" className="h-36 w-36 rounded-xl object-cover border shadow-sm" />
+                        <p className="mt-2 text-xs font-semibold text-green-600">✓ Ready to upload on Save</p>
+                        <button type="button" onClick={() => { setProductImageFile(null); setProductImagePreview(null); }} className="mt-1 text-xs text-red-500 underline">Remove image</button>
+                      </div>
+                    )}
+                    {uploadingImage && <p className="mt-2 text-xs text-gray-500">Uploading to Supabase...</p>}
                   </div>
                   <div className="mt-5 flex flex-col-reverse sm:flex-row gap-3">
                     <button
