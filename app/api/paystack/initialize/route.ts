@@ -2,52 +2,66 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, amount, order_number, customer_name, business_name, secret_key } = await req.json();
+    const { email, amount, orderId, orderNumber } = await req.json();
 
-    if (!secret_key) {
-      return NextResponse.json({ error: "Paystack secret key not set in Business Settings" }, { status: 400 });
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    
+    // SAFE MODE: If you haven't registered for Paystack yet, don't crash
+    if (!secret) {
+      return NextResponse.json(
+        { 
+          error: "Paystack not configured yet - finish CAC registration first. App still works, just manual payment for now.",
+          safe: true 
+        },
+        { status: 200 }
+      );
     }
+
     if (!email || !amount) {
       return NextResponse.json({ error: "Email and amount required" }, { status: 400 });
     }
 
-    // Paystack amount is in kobo (NGN * 100)
-    const paystackAmount = Math.round(Number(amount) * 100);
+    // Amount in kobo for Paystack
+    const amountInKobo = Math.round(Number(amount) * 100);
 
-    const res = await fetch("https://api.paystack.co/transaction/initialize", {
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${secret_key}`,
+        Authorization: `Bearer ${secret}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         email,
-        amount: paystackAmount,
+        amount: amountInKobo,
+        reference: `${orderNumber || orderId}-${Date.now()}`,
         metadata: {
-          order_number,
-          customer_name,
-          business_name,
+          order_id: orderId,
+          order_number: orderNumber,
           custom_fields: [
-            { display_name: "Order Number", variable_name: "order_number", value: order_number },
-            { display_name: "Business", variable_name: "business", value: business_name },
-          ]
+            {
+              display_name: "Order Number",
+              variable_name: "order_number",
+              value: orderNumber,
+            },
+          ],
         },
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}?payment=success&order=${order_number}`,
       }),
     });
 
-    const data = await res.json();
+    const data = await response.json();
 
     if (!data.status) {
-      return NextResponse.json({ error: data.message || "Paystack error" }, { status: 400 });
+      return NextResponse.json({ error: data.message }, { status: 400 });
     }
 
     return NextResponse.json({
       authorization_url: data.data.authorization_url,
-      access_code: data.data.access_code,
       reference: data.data.reference,
+      access_code: data.data.access_code,
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Failed to initialize Paystack" }, { status: 500 });
   }
 }
+
+export const dynamic = "force-dynamic";
