@@ -24,6 +24,64 @@ function generateOrderNumber() {
   return `RIRI-${rand}`;
 }
 
+// --- YOUR REAL BANK DETAILS - ALREADY FILLED ---
+function BankTransferCard({ amount, orderNumber }: { amount: number, orderNumber: string }) {
+  const formattedAmount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(amount);
+  const bankName = "Opay";
+  const accountNumber = "9064301203";
+  const accountName = "Riri collections";
+  const whatsappNumber = "2349064301203";
+
+  const copy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    alert(`Copied: ${text}`);
+  };
+
+  const whatsappMessage = encodeURIComponent(`Hello Riri Collection! I just placed order ${orderNumber}. I have transferred ${formattedAmount} to ${bankName} ${accountNumber}. Here is my proof:`);
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+
+  return (
+    <div className="mt-4 bg-white rounded-xl p-4 text-left text-black border-2 border-black/10 shadow-sm">
+      <h3 className="font-bold text-lg mb-1">💳 Pay via Bank Transfer</h3>
+      <p className="text-sm text-gray-600 mb-3">Please transfer and send proof on WhatsApp. Order will be confirmed once payment is received.</p>
+
+      <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Amount to Pay</span>
+          <span className="font-bold text-purple-700">{formattedAmount}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Bank</span>
+          <span className="font-semibold">{bankName}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Account Number</span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg tracking-wide">{accountNumber}</span>
+            <button onClick={() => copy(accountNumber)} className="text-xs bg-black text-white px-2 py-1 rounded">Copy</button>
+          </div>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Account Name</span>
+          <span className="font-semibold">{accountName}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-500">Reference</span>
+          <span className="font-mono font-bold">{orderNumber}</span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex gap-2">
+        <a href={whatsappLink} target="_blank" className="flex-1 bg-green-600 text-white text-center py-3 rounded-lg font-bold hover:bg-green-700">
+          📱 Send Proof on WhatsApp
+        </a>
+      </div>
+
+      <p className="mt-2 text-[11px] text-gray-500 text-center">Use Order Number {orderNumber} as narration so we confirm you fast.</p>
+    </div>
+  );
+}
+
 export default function ShopPage() {
   const params = useParams();
   const businessId = params.businessId as string;
@@ -38,6 +96,7 @@ export default function ShopPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<string | null>(null);
+  const [lastOrderTotal, setLastOrderTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   
   // Checkout form
@@ -141,6 +200,7 @@ export default function ShopPage() {
       const orderNumber = generateOrderNumber();
       const subtotal = cartTotal;
       const finalTotal = subtotal + deliveryFee;
+      setLastOrderTotal(finalTotal);
       const fullAddress = `${custAddress} [Delivery: ${deliveryLocation === "abuja" ? "Abuja - ₦1,500" : "Outside Abuja - ₦3,500"}]`;
       const { data: order, error: orderErr } = await supabase.from("orders").insert({
         business_id: businessId,
@@ -176,85 +236,58 @@ export default function ShopPage() {
         if (stockErr) console.error("Stock update failed", stockErr);
       }
 
-      // 5. Notify owner via WhatsApp (opens in background) - owner gets alert
-      try {
-        const ownerMsg = `🔔 NEW ORDER! ${orderNumber}\nCustomer: ${custName} (${custPhone})\nItems: ${cart.map(c=>`${c.name} x${c.qty}`).join(', ')}\nSubtotal: ₦${cartTotal.toLocaleString()}\nDelivery: ${deliveryLocation} ₦${deliveryFee.toLocaleString()}\nTOTAL: ₦${finalTotal.toLocaleString()}\nAddress: ${custAddress}\nCheck dashboard: /admin or /`;
-        // We store notification attempt - owner will see in dashboard, plus we open wa.me to owner if businessPhone set
-        const ownerPhoneClean = businessPhone.replace(/\D/g,'');
-        if (ownerPhoneClean) {
-          // Create a hidden notification - we don't auto-open to avoid popup block, but we log
-          console.log("Owner notification:", ownerMsg);
-          // Optional: you can enable auto WhatsApp to owner by uncommenting:
-          // window.open(`https://wa.me/${ownerPhoneClean}?text=${encodeURIComponent(ownerMsg)}`, '_blank');
-        }
-      } catch (notifErr) {
-        console.log("Notification error", notifErr);
-      }
-
-      // Success
       setOrderSuccess(orderNumber);
       setCart([]);
-      setShowCart(false);
       setShowCheckout(false);
-      setCustName(""); setCustPhone(""); setCustAddress("");
-      // Refresh products to show new stock
+      setShowCart(false);
+      setCustName("");
+      setCustPhone("");
+      setCustAddress("");
+      // Reload products to reflect new stock
       const { data: prods } = await supabase.from("products").select("*").eq("business_id", businessId).eq("active", true).order("created_at", { ascending: false });
       if (prods) setProducts(prods as any);
 
     } catch (e: any) {
-      alert("Failed: " + e.message);
+      alert("Order failed: " + e.message);
     } finally {
       setPlacing(false);
     }
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FAF7F1]"><p className="animate-pulse font-bold text-[#6B21A8]">Loading {businessName} shop...</p></div>;
+  if (loading) return <div className="p-10 text-center">Loading Riri Collection...</div>;
 
   return (
-    <div className="min-h-screen bg-[#FAF7F1]">
-      {/* HEADER WITH CART BUTTON */}
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-        <a href="/" className="flex items-center gap-3 hover:opacity-80">
-          <div className="h-9 w-9 rounded-xl bg-[#6B21A8] text-white flex items-center justify-center font-black">R</div>
-          <div>
-            <p className="font-black text-sm leading-none">{businessName}</p>
-            <p className="text-[10px] text-gray-500">Abuja • Nationwide delivery</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* HEADER */}
+      <header className="sticky top-0 z-20 bg-white border-b px-4 py-3 flex justify-between items-center">
+        <h1 className="font-black text-lg">{businessName}</h1>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search Ankara, gown..." className="rounded-full bg-gray-100 px-4 py-2 pl-8 text-sm w-40 md:w-64 outline-none" />
+            <span className="absolute left-3 top-3.5 text-gray-400">🔍</span>
           </div>
-        </a>
-        <div className="flex items-center gap-2">
-          <a href="/" className="hidden md:flex rounded-full bg-gray-100 text-gray-700 px-4 py-2 text-xs font-bold">
-            ← Dashboard
-          </a>
-          <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2 text-sm font-bold flex items-center gap-2">
-            🛒 Cart
-            {cartCount > 0 && <span className="bg-[#6B21A8] text-white text-[10px] px-2 py-0.5 rounded-full">{cartCount}</span>}
+          <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2 text-sm font-bold">
+            Cart {cartCount > 0 && <span className="absolute -top-2 -right-2 bg-[#6B21A8] text-white text-[10px] h-5 w-5 flex items-center justify-center rounded-full">{cartCount}</span>}
           </button>
         </div>
       </header>
 
-      {/* SEARCH BAR - NEW */}
       <div className="max-w-5xl mx-auto p-4">
-        <div className="relative">
-          <input
-            value={searchQuery}
-            onChange={e=>setSearchQuery(e.target.value)}
-            placeholder="Search Ankara, shoes, bags..."
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 pl-10 text-sm outline-none focus:border-[#6B21A8] shadow-sm"
-          />
-          <span className="absolute left-3 top-3.5 text-gray-400">🔍</span>
-        </div>
-        {searchQuery && <p className="mt-2 text-xs text-gray-500">{filteredProducts.length} items found for "{searchQuery}"</p>}
+        <p className="mt-2 text-xs text-gray-500">{filteredProducts.length} items found for "{searchQuery}"</p>
       </div>
 
-      {/* SUCCESS MESSAGE */}
+      {/* SUCCESS MESSAGE + BANK DETAILS */}
       {orderSuccess && (
         <div className="max-w-5xl mx-auto m-4 rounded-2xl bg-green-600 text-white p-5 text-center">
           <p className="text-2xl">✅</p>
           <p className="font-black text-lg">Order Placed! {orderSuccess}</p>
           <p className="text-sm mt-1">We will call you to confirm delivery. Thank you for shopping with {businessName}!</p>
+          
+          <BankTransferCard amount={lastOrderTotal} orderNumber={orderSuccess} />
+
           <div className="mt-3 flex gap-2 justify-center">
             <button onClick={() => setOrderSuccess(null)} className="bg-white text-green-700 rounded-xl px-4 py-2 text-sm font-bold">Continue Shopping</button>
-            <a href={`/track/${orderSuccess}?businessId=${businessId}`} className="bg-black text-white rounded-xl px-4 py-2 text-sm font-bold">Track Order →</a>
+            <a href={`/track/${orderSuccess}?businessId=${businessId}`} className="bg-black text-white rounded-xl px-4 py-2 text-sm font-bold">Track Order</a>
           </div>
           <p className="mt-2 text-[11px] opacity-80">Order total includes delivery fee. Keep your order number: {orderSuccess}</p>
         </div>
@@ -266,15 +299,15 @@ export default function ShopPage() {
           <div key={p.id} className="rounded-2xl bg-white border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition">
             <div className="aspect-square bg-gray-50 flex items-center justify-center text-4xl relative">
               {p.image_url ? <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" loading="lazy" /> : "👗"}
-              {p.stock_quantity <= 5 && p.stock_quantity > 0 && <span className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] px-2 py-1 rounded-full font-bold">Only {p.stock_quantity} left!</span>}
+              {p.stock_quantity <= 5 && p.stock_quantity > 0 && <span className="absolute top-2 left-2 bg-orange-500 text-white text-[9px] px-2 py-1 rounded-full">{p.stock_quantity} left</span>}
               {p.stock_quantity === 0 && <span className="absolute inset-0 bg-white/80 flex items-center justify-center font-black text-xs">SOLD OUT</span>}
             </div>
             <div className="p-3">
               <p className="font-bold text-sm truncate">{p.name}</p>
-              <p className="text-xs text-gray-500 truncate">{p.stock_quantity > 0 ? `${p.stock_quantity} left` : "Out of stock"} {p.description ? `• ${p.description.slice(0,20)}` : ""}</p>
+              <p className="text-xs text-gray-500 truncate">{p.stock_quantity > 0 ? `${p.stock_quantity} left` : "Out of stock"} {p.description && `• ${p.description}`}</p>
               <div className="mt-2 flex justify-between items-center">
                 <p className="font-black text-[#6B21A8]">₦{Number(p.price).toLocaleString()}</p>
-                <button disabled={p.stock_quantity === 0} onClick={() => addToCart(p)} className="rounded-xl bg-black text-white text-xs font-bold px-3 py-2 disabled:opacity-30 hover:bg-[#6B21A8] transition">
+                <button disabled={p.stock_quantity === 0} onClick={() => addToCart(p)} className="rounded-xl bg-black text-white text-xs font-bold px-3 py-1.5 disabled:opacity-30">
                   {p.stock_quantity === 0 ? "Sold Out" : "+ Add"}
                 </button>
               </div>
