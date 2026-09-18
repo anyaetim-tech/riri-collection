@@ -66,7 +66,7 @@ export default function ShopPage() {
   const [custAddress, setCustAddress] = useState("");
   const [deliveryLocation, setDeliveryLocation] = useState<"abuja"|"outside">("abuja");
 
-  // SAME LOAD LOGIC - NOTHING CHANGED
+  // LOAD PRODUCTS
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -79,6 +79,27 @@ export default function ShopPage() {
     if (businessId) load();
   }, [businessId, supabase]);
 
+  // *** FIX: LOAD CART FROM LOCAL STORAGE WHEN YOU COME BACK ***
+  useEffect(() => {
+    if (!businessId) return;
+    try {
+      const saved = localStorage.getItem(`riri-cart-${businessId}`);
+      if (saved) {
+        setCart(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.log("No saved cart");
+    }
+  }, [businessId]);
+
+  // *** FIX: SAVE CART TO LOCAL STORAGE ANYTIME IT CHANGES ***
+  useEffect(() => {
+    if (!businessId) return;
+    try {
+      localStorage.setItem(`riri-cart-${businessId}`, JSON.stringify(cart));
+    } catch (e) {}
+  }, [cart, businessId]);
+
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const deliveryFee = deliveryLocation === "abuja" ? 1500 : 3500;
@@ -90,7 +111,6 @@ export default function ShopPage() {
     return products.filter(p => p.name.toLowerCase().includes(q) || (p.description||"").toLowerCase().includes(q));
   }, [products, searchQuery]);
 
-  // SAME CART LOGIC - NOT CHANGED
   function addToCart(p: Product) {
     setCart(prev => {
       const found = prev.find(x => x.id === p.id);
@@ -111,7 +131,6 @@ export default function ShopPage() {
     }
   }
 
-  // SAME PLACE ORDER LOGIC - NOT CHANGED AT ALL
   async function placeOrder() {
     if (!custName || !custPhone || !custAddress) { alert("Please fill name, phone, address"); return; }
     if (cart.length === 0) return;
@@ -146,7 +165,10 @@ export default function ShopPage() {
         if (stockErr) console.error("Stock update failed", stockErr);
       }
       setOrderSuccess(orderNumber);
-      setCart([]); setShowCheckout(false); setShowCart(false);
+      setCart([]);
+      // Clear saved cart after order success
+      localStorage.removeItem(`riri-cart-${businessId}`);
+      setShowCheckout(false); setShowCart(false);
       setCustName(""); setCustPhone(""); setCustAddress("");
       const { data: prods } = await supabase.from("products").select("*").eq("business_id", businessId).eq("active", true).order("created_at", { ascending: false });
       if (prods) setProducts(prods as any);
@@ -157,7 +179,6 @@ export default function ShopPage() {
 
   return (
     <div className="min-h-screen bg-[#FFFBF7]">
-      {/* PRESENTABLE HEADER - SAME FUNCTION, PRETTIER LOOK */}
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-black/5">
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -172,7 +193,7 @@ export default function ShopPage() {
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search gowns, bags..." className="rounded-full bg-gray-100 px-4 py-2.5 pl-9 text-sm w-56 outline-none focus:bg-white focus:ring-2 focus:ring-black/10 transition" />
               <span className="absolute left-3.5 top-3 text-gray-400 text-sm">🔍</span>
             </div>
-            <a href={`/`}  className="hidden md:flex text-xs font-black px-4 py-2.5 rounded-full bg-gray-100 hover:bg-black hover:text-white transition">Dashboard</a>
+            <a href={`/`} className="hidden md:flex text-xs font-black px-4 py-2.5 rounded-full bg-gray-100 hover:bg-black hover:text-white transition">Dashboard</a>
             <a href="/" className="hidden md:flex text-xs font-bold px-3 py-2.5 rounded-full border border-black/10 hover:bg-black hover:text-white transition">Home</a>
             <button onClick={() => setShowCart(true)} className="relative rounded-full bg-black text-white px-4 py-2.5 text-sm font-black flex items-center gap-1.5">
               🛒 <span className="hidden md:inline">Cart</span> {cartCount > 0 && <span className="bg-[#6B21A8] text-white text-[10px] h-5 min-w-5 px-1 flex items-center justify-center rounded-full">{cartCount}</span>}
@@ -184,11 +205,10 @@ export default function ShopPage() {
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search Ankara, gown..." className="rounded-full bg-gray-100 px-4 py-2.5 pl-9 text-sm w-full outline-none" />
             <span className="absolute left-3.5 top-3 text-gray-400 text-sm">🔍</span>
           </div>
-          <a href={`/`}  className="text-xs font-black px-3 py-2.5 rounded-full bg-gray-100">Dashboard</a>
+          <a href={`/`} className="text-xs font-black px-3 py-2.5 rounded-full bg-gray-100">Dashboard</a>
         </div>
       </header>
 
-      {/* PRESENTABLE TRUST BAR - ONLY VISUAL, NO LOGIC */}
       {!orderSuccess && (
         <div className="max-w-6xl mx-auto px-4 mt-3">
           <div className="rounded-2xl bg-black text-white px-4 py-3 flex flex-wrap gap-3 items-center justify-between text-[11px]">
@@ -210,7 +230,6 @@ export default function ShopPage() {
         <p className="text-[10px] text-gray-400 hidden md:block">Pay via Bank Transfer • Secure • No online payment needed</p>
       </div>
 
-      {/* SUCCESS - SAME LOGIC AS YOUR WORKING VERSION */}
       {orderSuccess && (
         <div className="max-w-3xl mx-auto m-4 rounded-[24px] bg-green-600 text-white p-5 md:p-6 text-center shadow-lg">
           <p className="text-3xl">✅</p>
@@ -225,7 +244,6 @@ export default function ShopPage() {
         </div>
       )}
 
-      {/* PRODUCTS - SAME LOGIC, PRETTIER CARDS */}
       <main className="max-w-6xl mx-auto p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
         {filteredProducts.map(p => (
           <div key={p.id} className="group rounded-[22px] bg-white border border-black/5 overflow-hidden shadow-[0_2px_10px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-all duration-300">
@@ -251,7 +269,6 @@ export default function ShopPage() {
         )}
       </main>
 
-      {/* CART - ORIGINAL LOGIC, SAME AS WORKING */}
       {showCart && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowCart(false)} />
@@ -291,7 +308,6 @@ export default function ShopPage() {
         </div>
       )}
 
-      {/* CHECKOUT - ORIGINAL LOGIC, SAME */}
       {showCheckout && (
         <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCheckout(false)} />
@@ -321,7 +337,7 @@ export default function ShopPage() {
         </div>
       )}
 
-      <footer className="text-center py-12 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja • Stock auto-updates • <a href={`/`}  className="underline font-black">Dashboard</a></footer>
+      <footer className="text-center py-12 text-[10px] text-gray-400">Powered by Orderly • {businessName} • Abuja • Stock auto-updates • <a href={`/`} className="underline font-black">Dashboard</a></footer>
     </div>
   );
 }
