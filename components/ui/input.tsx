@@ -1,0 +1,1 @@
+export function Input({className,...p}:any){return <input className={`h-12 w-full rounded-2xl border bg-white px-4 text-[14px] ${className||''}`} {...p}/>} export function Label({className,...p}:any){return <label className={`mb-2 block text-[11px] font-bold uppercase tracking-wider text-gray-500 ${className||''}`} {...p}/>}

@@ -1,0 +1,1 @@
+export function Badge({status}:{status:string}){return <span className='inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold bg-gray-100 border'>{status}</span>}
