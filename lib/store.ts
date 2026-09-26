@@ -4,10 +4,10 @@ export type Shop={id:string;slug:string;name:string;ownerId:string;phone?:string
 export type Product={id:string;shopId:string;name:string;sku:string;price:number;stock:number;image:string;imageUrl?:string;desc?:string;category?:string}
 export type User={id:string;email:string;name:string;phone?:string}
 export type Order={id:string;shopId:string;customer:any;items:any[];total:number;deliveryFee:number;status:string;payment:string;delivery:string;date:string;paymentMethod:string}
-const SK='riri_sa_shops_v62'
-const UK='riri_sa_users_v62'
-const CU='riri_sa_current_user_v62'
-const k=(slug:string,t:string)=>`riri_sa_${t}_${slug}_v62`
+const SK='riri_sa_shops_v70'
+const UK='riri_sa_users_v70'
+const CU='riri_sa_current_user_v70'
+const k=(slug:string,t:string)=>`riri_sa_${t}_${slug}_v70`
 export const getCurrentUser=():User|null=>{ if(typeof window==='undefined') return null; try{ const r=localStorage.getItem(CU); return r?JSON.parse(r):null }catch{ return null } }
 export const setCurrentUser=(u:User|null)=>{ if(typeof window==='undefined') return; if(u) localStorage.setItem(CU, JSON.stringify(u)); else localStorage.removeItem(CU) }
 export const getUsers=():User[]=>{ if(typeof window==='undefined') return []; try{ const r=localStorage.getItem(UK); return r?JSON.parse(r):[] }catch{ return [] } }
