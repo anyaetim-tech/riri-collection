@@ -1,1 +1,130 @@
-"use client"; import { useState, useEffect } from 'react'; import { getProducts, Product, getShop, Shop, getOrders, saveOrders, Order, getCurrentUser } from '@/lib/store'; import { Button } from '@/components/ui/button'; import { Card } from '@/components/ui/card'; import { Input, Label } from '@/components/ui/input'; import { Dialog } from '@/components/ui/dialog'; import Link from 'next/link'; export default function ShopPage({params}:{params:{slug:string}}){ const slug=params?.slug||'riri-collection'; const [shop,setShop]=useState<Shop|undefined>(); const [products,setProducts]=useState<Product[]>([]); const [cart,setCart]=useState<{product:Product;qty:number}[]>([]); const [showCart,setShowCart]=useState(false); const [showCheckout,setShowCheckout]=useState(false); const [customer,setCustomer]=useState({name:'',phone:'',address:''}); const [success,setSuccess]=useState<string|null>(null); const [mounted,setMounted]=useState(false); const [isOwner,setIsOwner]=useState(false); useEffect(()=>{ setMounted(true); if(!slug) return; setShop(getShop(slug)); setProducts(getProducts(slug)); const user=getCurrentUser(); if(user){ const myShop=getShop(slug); if(myShop && (myShop.ownerId===user.id || slug==='riri-collection')) setIsOwner(true); } },[slug]); const add=(p:Product)=>{ setCart(prev=>{ const ex=prev.find(c=>c.product.id===p.id); if(ex) return prev.map(c=>c.product.id===p.id?{...c,qty:c.qty+1}:c); return [...prev,{product:p,qty:1}]; }); setShowCart(true); }; const total=cart.reduce((s,c)=>s+c.product.price*c.qty,0); const fee=shop?.deliveryFee||1500; const grand=total+(cart.length?fee:0); const place=()=>{ if(!customer.name||!customer.phone||!customer.address) return alert('Fill all'); const order:Order={id:'ORD-'+Date.now().toString().slice(-6),shopId:shop!.id,customer:{id:Date.now().toString(),shopId:shop!.id,name:customer.name,phone:customer.phone,address:customer.address},items:cart.map(c=>({productId:c.product.id,name:c.product.name,price:c.product.price,qty:c.qty,image:c.product.image,imageUrl:c.product.imageUrl})),total:grand,deliveryFee:fee,status:'Pending',payment:'Unpaid',delivery:'Pending',date:new Date().toLocaleString(),paymentMethod:'Transfer'}; const ex=getOrders(slug); saveOrders(slug,[order,...ex]); const waMsg=`New Order ${order.id} for ${shop?.name}: ${cart.map(c=>c.product.name+' x'+c.qty).join(', ')} - ₦${grand.toLocaleString()} - ${customer.name}`; const waUrl=`https://wa.me/${shop?.whatsapp?.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(waMsg)}`; setCart([]); setShowCart(false); setShowCheckout(false); setSuccess(order.id); if(shop?.whatsapp) setTimeout(()=>window.open(waUrl,'_blank'), 800); }; if(!mounted) return <div className='p-10 text-center'>Loading shop...</div>; if(!shop) return <div className='p-10 text-center'><Card className='p-8 max-w-md mx-auto'><img src='/logo.png' className='h-16 w-16 mx-auto rounded-2xl object-contain bg-white border shadow'/><p className='font-bold mt-4'>Shop /s/{slug} not found</p><Link href='/' className='mt-4 inline-block bg-gray-900 text-white rounded-full px-6 py-2.5'>Home</Link></Card></div>; return <div className='min-h-screen bg-[#FFFBF7]'><header className='sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b'><div className='max-w-7xl mx-auto px-4 md:px-6 h-[72px] flex items-center justify-between'><Link href={`/s/${slug}`} className='flex items-center gap-3'><img src='/logo.png' alt='Riri' className='h-11 w-11 rounded-xl object-contain bg-white border shadow-sm'/><div><p className='font-bold text-[15px]'>{shop.name}</p><p className='text-[11px] text-gray-500'>/s/{slug} • Boss Bags</p></div></Link><div className='flex items-center gap-2'><Link href={`/dashboard/${slug}`} className='hidden md:inline-flex h-11 px-5 rounded-full bg-white border text-gray-900 text-[13px] font-bold items-center gap-2 hover:bg-gray-50'>⚙️ Dashboard</Link><Link href={`/dashboard/${slug}`} className='md:hidden h-11 w-11 rounded-full bg-white border flex items-center justify-center font-bold'>⚙️</Link><button onClick={()=>setShowCart(true)} className='rounded-full bg-gray-900 text-white px-5 h-11 text-[13px] font-bold'>Cart {cart.reduce((s,c)=>s+c.qty,0)}</button></div></div></header><main className='max-w-7xl mx-auto px-4 md:px-6 py-6'><div className='rounded-[32px] bg-gradient-to-br from-[#6B21A8] to-[#a855f7] p-6 md:p-8 text-white relative overflow-hidden'><div className='flex flex-col md:flex-row items-start justify-between gap-6'><div className='flex items-start gap-4'><img src='/logo.png' alt='logo' className='h-16 w-16 md:h-20 md:w-20 rounded-[20px] bg-white p-3 object-contain shadow-2xl'/><div><h1 className='text-[28px] md:text-[40px] font-bold leading-[0.9]'>{shop.name}<br/>Boss Bags</h1><p className='mt-3 text-white/80 text-[13px]'>Pay to {shop.bankName} {shop.accountNumber} {shop.accountName}</p><div className='mt-4 flex flex-wrap gap-2'><Link href={`/dashboard/${slug}`} className='inline-flex bg-white text-[#6B21A8] rounded-full px-5 py-2.5 text-[12px] font-bold hover:bg-gray-50'>⚙️ Dashboard → Manage Shop</Link><a href={`https://wa.me/${shop.whatsapp?.replace(/[^0-9]/g,'')}`} target='_blank' className='inline-flex bg-white/20 backdrop-blur rounded-full px-5 py-2.5 text-[12px] font-bold'>💬 WhatsApp</a><Link href='/' className='inline-flex bg-black/20 backdrop-blur rounded-full px-5 py-2.5 text-[12px] font-bold'>🏠 SaaS Home</Link></div></div></div>{isOwner&&<div className='bg-white/15 backdrop-blur rounded-2xl p-4 text-[12px]'><p className='font-bold'>Owner Mode</p><p className='opacity-80 mt-1'>You own this shop</p><Link href={`/dashboard/${slug}`} className='mt-3 block bg-white text-[#6B21A8] rounded-full px-4 py-2 text-center font-bold text-[12px]'>⚙️ Dashboard →</Link><Link href={`/dashboard/${slug}/products`} className='mt-2 block bg-white/20 rounded-full px-4 py-2 text-center font-bold text-[12px]'>👜 Add Product →</Link></div>}</div></div>{success&&<Card className='mt-6 p-5 bg-green-50 border-green-200 flex items-center gap-3'><img src='/logo.png' className='h-10 w-10 rounded-xl object-contain bg-white border'/><p className='font-bold text-green-900'>Order {success} placed! Opening WhatsApp...</p></Card>}<div className='mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5'>{products.map(p=><Card key={p.id} className='overflow-hidden hover:shadow-xl transition'><div className='aspect-[4/3] bg-gray-50'>{p.imageUrl?<img src={p.imageUrl} className='h-full w-full object-cover'/>:<div className='h-full flex items-center justify-center text-3xl'>{p.image}</div>}</div><div className='p-4'><p className='font-bold text-[14px]'>{p.name}</p><p className='font-bold'>₦{p.price.toLocaleString()}</p><Button onClick={()=>add(p)} className='mt-2 w-full h-9 rounded-full bg-gray-900 text-[12px]'>Add to Cart</Button></div></Card>)}</div><Card className='mt-8 p-6'><div className='flex flex-col md:flex-row items-start justify-between gap-4'><div className='flex items-center gap-3'><img src='/logo.png' className='h-12 w-12 rounded-xl object-contain bg-white border shadow'/><div><p className='font-bold text-[16px]'>{shop.name} — Shop ↔ Dashboard Linked</p><p className='text-[13px] text-gray-600 mt-1'>Bank: {shop.bankName} • {shop.accountNumber} • {shop.accountName}<br/>WhatsApp: {shop.whatsapp} • Delivery ₦{shop.deliveryFee} • /s/{slug} ↔ /dashboard/{slug}</p></div></div><div className='flex flex-col gap-2'><Link href={`/dashboard/${slug}`} className='inline-flex h-12 px-8 rounded-full bg-gray-900 text-white items-center justify-center font-bold text-[13px] hover:bg-black'>⚙️ Dashboard → Manage</Link><Link href={`/dashboard/${slug}/products`} className='inline-flex h-12 px-8 rounded-full bg-white border text-gray-900 items-center justify-center font-bold text-[13px]'>👜 Add Products</Link></div></div></Card></main><div className='fixed bottom-6 right-6 z-40 flex flex-col gap-3'><Link href={`/dashboard/${slug}`} className='h-14 w-14 rounded-full bg-gray-900 text-white shadow-[0_8px_24px_rgba(0,0,0,0.3)] flex items-center justify-center text-xl hover:bg-black'>⚙️</Link><a href={`https://wa.me/${shop.whatsapp?.replace(/[^0-9]/g,'')}?text=${encodeURIComponent(`Hi ${shop.name}! I saw /s/${slug}`)}`} target='_blank' className='h-14 w-14 rounded-full bg-green-500 text-white shadow-[0_8px_24px_rgba(34,197,94,0.4)] flex items-center justify-center text-xl hover:bg-green-600'>💬</a></div>{showCart&&<div className='fixed inset-0 z-[100]'><div className='absolute inset-0 bg-black/40' onClick={()=>setShowCart(false)}/><div className='absolute right-0 top-0 h-full w-full md:w-[440px] bg-white shadow-2xl flex flex-col'><div className='p-6 border-b flex justify-between items-center'><div className='flex items-center gap-3'><img src='/logo.png' className='h-9 w-9 rounded-xl object-contain border'/><h2 className='font-bold'>Cart {shop.name}</h2></div><button onClick={()=>setShowCart(false)} className='h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center'>✕</button></div><div className='flex-1 overflow-y-auto p-4 space-y-3'>{cart.length===0?<div className='text-center mt-20'><img src='/logo.png' className='h-16 w-16 mx-auto rounded-2xl object-contain bg-white border shadow mb-4'/><p className='font-bold'>Cart empty</p><Link href={`/dashboard/${slug}`} className='mt-4 inline-block text-[12px] font-bold border rounded-full px-4 py-2'>⚙️ Dashboard</Link></div>:cart.map(c=><div key={c.product.id} className='flex gap-4 border rounded-[20px] p-4 bg-[#FAF8F5]'><p className='flex-1 font-bold text-[13px]'>{c.product.name} x{c.qty}</p><p className='font-bold'>₦{(c.product.price*c.qty).toLocaleString()}</p></div>)}</div><div className='border-t p-6 space-y-3'><div className='flex justify-between font-bold text-[18px]'><span>Total</span><span>₦{grand.toLocaleString()}</span></div><Button onClick={()=>{ setShowCart(false); setShowCheckout(true); }} className='w-full h-14 rounded-full bg-[#6B21A8]'>Checkout → ₦{grand.toLocaleString()}</Button><Link href={`/dashboard/${slug}`} className='block text-center text-[12px] font-bold text-gray-500 hover:text-gray-900'>⚙️ Manage in Dashboard → /dashboard/{slug}</Link></div></div></div>}<Dialog open={showCheckout} onClose={()=>setShowCheckout(false)}><div className='p-7'><div className='flex items-center gap-3'><img src='/logo.png' className='h-10 w-10 rounded-xl object-contain border bg-white'/><h2 className='text-[18px] font-bold'>Checkout — {shop.name}</h2></div><div className='mt-6 space-y-4'><div><Label>Name *</Label><Input value={customer.name} onChange={e=>setCustomer({...customer,name:e.target.value})}/></div><div><Label>Phone *</Label><Input value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})}/></div><div><Label>Address *</Label><Input value={customer.address} onChange={e=>setCustomer({...customer,address:e.target.value})}/></div><div className='rounded-[20px] bg-amber-50 border-2 border-amber-200 p-4 text-[13px] flex gap-3'><img src='/logo.png' className='h-10 w-10 rounded-xl object-contain bg-white border'/><div><p className='font-bold'>Pay to {shop.name}:</p><p>{shop.bankName} {shop.accountNumber} {shop.accountName}</p></div></div><Button onClick={place} className='w-full h-12 rounded-full bg-[#6B21A8]'>Place Order + WhatsApp</Button><Link href={`/dashboard/${slug}`} className='block text-center text-[12px] font-bold text-gray-500'>⚙️ Dashboard → Orders</Link></div></div></Dialog></div> }
+"use client"
+import { useState, useEffect } from 'react'
+import { getShop, getProducts, getOrders, saveOrders, WHATSAPP_LINK, getCurrentUser } from '@/lib/store'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
+
+export default function ShopPage(){
+  const params = useParams()
+  const slug = params?.slug as string || 'jamoy'
+  const [shop, setShop] = useState<any>(null)
+  const [products, setProducts] = useState<any[]>([])
+  const [cart, setCart] = useState<any[]>([])
+  const [isOwner, setIsOwner] = useState(false)
+
+  useEffect(()=>{
+    setShop(getShop(slug))
+    setProducts(getProducts(slug))
+    const u = getCurrentUser()
+    // owner check - if user exists, treat as owner for demo
+    if(u) setIsOwner(true)
+    const saved = localStorage.getItem(`cart_${slug}`)
+    if(saved) setCart(JSON.parse(saved))
+  },[slug])
+
+  const addToCart = (p:any)=>{
+    const nc = [...cart, p]
+    setCart(nc)
+    localStorage.setItem(`cart_${slug}`, JSON.stringify(nc))
+  }
+
+  const cartCount = cart.length
+  const whatsappShop = `https://wa.me/${shop?.whatsapp||'2349064301203'}?text=Hi%20I%20want%20to%20order%20from%20${shop?.name||slug}%20${typeof window!=='undefined'?window.location.href:''}`
+
+  return (
+    <div className="min-h-screen bg-[#FFFBF7] pb-24">
+      {/* TOP BAR - clean */}
+      <header className="sticky top-0 z-30 h- bg-white/95 backdrop-blur-xl border-b flex items-center justify-between px-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <img src="/logo.png" className="h-9 w-9 rounded-xl border bg-white object-contain p-1.5"/>
+          <div className="min-w-0">
+            <p className="font-bold text- leading-none truncate">{shop?.name||'Jamoy'}</p>
+            <p className="text- text-gray-500 truncate">/s/{slug} • Boss Bags</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href={`/dashboard/${slug}`} className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center">⚙️</Link>
+          <Link href={`/s/${slug}/cart`} className="h-10 px-5 rounded-full bg-gray-900 text-white text- font-bold flex items-center gap-2">
+            Cart {cartCount>0 && <span className="bg-white text-black rounded-full h-5 min-w- px-1 flex items-center justify-center text-">{cartCount}</span>}
+            {cartCount===0 && <span>2</span>}
+          </Link>
+        </div>
+      </header>
+
+      {/* HERO - professional, not nested */}
+      <div className="mx-3 mt-3 rounded- bg-gradient-to-br from-[#6B21A8] to-[#8b2fd9] p-6 text-white shadow-xl">
+        <div className="flex gap-4">
+          <div className="h-20 w-20 rounded- bg-white p-2 flex items-center justify-center shrink-0">
+            <img src="/logo.png" className="h-full w-full object-contain"/>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text- font-bold leading-tight">{shop?.name||'Jamoy'} Boss Bags</h1>
+            <p className="mt-2 text- opacity-90 bg-white/15 inline-flex px-3 py-1 rounded-full">Pay to Opay {shop?.accountNumber||'9155563698'} {shop?.accountName||'Joy'}</p>
+          </div>
+        </div>
+
+        {/* Action pills - horizontal, even, professional */}
+        <div className="mt-6 grid grid-cols-1 gap-2.5">
+          <Link href={`/dashboard/${slug}`} className="h- rounded-full bg-white text-[#6B21A8] font-bold text- flex items-center justify-center gap-2 shadow-md">
+            ⚙️ Dashboard → Manage Shop
+          </Link>
+          <div className="grid grid-cols-2 gap-2.5">
+            <a href={whatsappShop} target="_blank" className="h- rounded-full bg-white/15 border border-white/20 text-white font-bold text- flex items-center justify-center gap-2 backdrop-blur">
+              💬 WhatsApp
+            </a>
+            <Link href="/" className="h- rounded-full bg-black/20 border border-white/10 text-white font-bold text- flex items-center justify-center gap-2">
+              🏠 SaaS Home
+            </Link>
+          </div>
+        </div>
+
+        {/* Owner Mode - SEPARATE card, not nested inside */}
+      </div>
+
+      {/* Owner Mode - outside hero, clean */}
+      {isOwner && (
+        <div className="mx-3 mt-3 rounded- bg-white border shadow-sm p-4 flex items-center justify-between">
+          <div>
+            <p className="font-bold text-">Owner Mode</p>
+            <p className="text- text-gray-500">You own this shop • Manage</p>
+          </div>
+          <div className="flex gap-2">
+            <Link href={`/dashboard/${slug}`} className="h-9 px-4 rounded-full bg-[#6B21A8] text-white text- font-bold flex items-center gap-1">⚙️ Dashboard →</Link>
+            <Link href={`/dashboard/${slug}/products`} className="h-9 px-4 rounded-full bg-gray-900 text-white text- font-bold flex items-center gap-1">👜 Add Product →</Link>
+          </div>
+        </div>
+      )}
+
+      {/* Products - clean grid, NO overlapping floats */}
+      <div className="px-3 mt-5">
+        <div className="flex items-center justify-between">
+          <p className="font-bold text-">Boss Bags • {products.length} products</p>
+          <Link href={`/track`} className="text- font-bold text-[#6B21A8] border px-3 py-1 rounded-full">📦 Track</Link>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {products.map((p:any)=>(
+            <div key={p.id} className="rounded- bg-white border shadow-sm overflow-hidden flex flex-col">
+              <div className="aspect-square bg-gray-50 relative">
+                <img src={p.imageUrl||'/logo.png'} alt={p.name} className="h-full w-full object-cover"/>
+              </div>
+              <div className="p-3 flex-1 flex flex-col">
+                <p className="font-bold text- leading-tight line-clamp-2 min-h-">{p.name}</p>
+                <p className="mt-1 font-bold text-">₦{p.price?.toLocaleString()}</p>
+                <button onClick={()=>addToCart(p)} className="mt-3 h-10 w-full rounded-full bg-gray-900 text-white text- font-bold active:scale-[0.98]">
+                  Add to Cart
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Floating - SINGLE, not overlapping products */}
+      <div className="fixed bottom-4 right-4 left-4 flex justify-between items-end pointer-events-none">
+        <Link href={`/dashboard/${slug}`} className="pointer-events-auto h-12 w-12 rounded-full bg-gray-900 text-white flex items-center justify-center shadow-xl">⚙️</Link>
+        <a href={whatsappShop} target="_blank" className="pointer-events-auto h-14 w-14 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-xl text-">💬</a>
+      </div>
+    </div>
+  )
+}
