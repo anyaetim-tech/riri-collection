@@ -1,0 +1,1 @@
+import './globals.css'; export const metadata={title:'Riri Collection SaaS - Boss Bags', description:'Riri Collection SaaS - WhatsApp Friendly, Logo Everywhere', icons:{icon:'/logo.png'}}; export default function RootLayout({children}:{children:React.ReactNode}){return <html lang='en'><body>{children}</body></html>}
