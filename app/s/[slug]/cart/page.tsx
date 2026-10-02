@@ -1,0 +1,1 @@
+export default function Cart(){ return <div className='p-6'><h1 className='font-bold'>Cart</h1></div> }

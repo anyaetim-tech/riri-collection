@@ -1,1 +1,1 @@
-export function Button({children,className,...p}:any){return <button className={`h-11 px-6 rounded-full bg-gray-900 text-white text-[13px] font-bold ${className||''}`} {...p}>{children}</button>}
+export function Button({children,className,...p}:any){return <button className={`h-11 px-6 rounded-full bg-black text-white font-bold ${className||''}`} {...p}>{children}</button>}

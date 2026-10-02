@@ -1,1 +1,1 @@
-export function Card({className,...p}:any){return <div className={`rounded-[24px] border bg-white overflow-hidden ${className||''}`} {...p}/>} export function CardHeader({className,...p}:any){return <div className={`flex justify-between border-b p-5 ${className||''}`} {...p}/>} export function CardContent({className,...p}:any){return <div className={`p-5 ${className||''}`} {...p}/>}
+export function Card({className,...p}:any){return <div className={`rounded-[16px] border bg-white ${className||''}`} {...p}/>}
