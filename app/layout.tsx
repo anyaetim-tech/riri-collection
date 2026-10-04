@@ -1,1 +1,1 @@
-import './globals.css'; export const metadata={title:'Riri Neat Professional',icons:{icon:'/logo.png'},manifest:'/manifest.json'}; export default function RootLayout({children}:{children:React.ReactNode}){return <html lang='en'><body className='bg-white antialiased'>{children}</body></html>}
+import './globals.css'; export const metadata={title:'Riri Collection SaaS - Shop + Dashboard Linked', icons:{icon:'/logo.png'}}; export default function RootLayout({children}:{children:React.ReactNode}){return <html lang='en'><body>{children}</body></html>}

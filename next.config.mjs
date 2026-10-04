@@ -1,1 +1,1 @@
-const c={typescript:{ignoreBuildErrors:true},eslint:{ignoreDuringBuilds:true}}; export default c;
+const nextConfig={typescript:{ignoreBuildErrors:true},eslint:{ignoreDuringBuilds:true}}; export default nextConfig;
