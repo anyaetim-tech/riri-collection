@@ -37,10 +37,14 @@ export default function ShopPage({params}:{params:{slug:string}}){
   const deliveryFee=shop?.deliveryFee||1500;
   const checkout=()=>{
     if(!customer.name || !customer.phone){ alert('Enter name and phone'); return; }
-    const order:Order={
-      id:`ORD-${Date.now()}`,
+    const orderId=`ORD-${Date.now()}`;
+    const order:any={
+      id:orderId,
       shopId:slug,
-      customer,
+      customerName:customer.name,
+      customerPhone:customer.phone,
+      customerAddress:customer.address,
+      customer:customer,
       items:cart.map(c=>({id:c.product.id, name:c.product.name, price:c.product.price, qty:c.qty})),
       total:total+deliveryFee,
       deliveryFee,
@@ -48,14 +52,26 @@ export default function ShopPage({params}:{params:{slug:string}}){
       payment:'Pending',
       delivery:'Pending',
       date:new Date().toISOString(),
-      paymentMethod:'Transfer'
+      createdAt:new Date().toISOString(),
+      paymentMethod:'Transfer',
+      viewedByOwner:false,
+      viewedByCustomer:false
     };
     const existing=getOrders(slug);
     saveOrders(slug, [...existing, order]);
+    const itemsText = cart.map(c=>`${c.product.name} x${c.qty} = ₦${(c.product.price*c.qty).toLocaleString()}`).join('\n');
+    const msg = `🔔 NEW ORDER ${orderId}\n\nCustomer: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address}\n\nItems:\n${itemsText}\n\nDelivery: ₦${deliveryFee}\nTotal: ₦${(total+deliveryFee).toLocaleString()}\n\nTrack: ${window.location.origin}/track?order=${orderId}`;
+    const ownerPhone = (shop?.whatsapp||'2348137717359').replace(/[^0-9]/g,'');
+    const waUrl = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(msg)}`;
     setCart([]);
     setShowCheckout(false);
     setShowCart(false);
-    alert(`Order ${order.id} placed!`);
+    try{ localStorage.removeItem(`cart_${slug}`); }catch{}
+    window.open(waUrl, '_blank');
+    setTimeout(()=>{
+      alert(`✅ Order ${orderId} placed! WhatsApp opened. Track ID: ${orderId}`);
+      window.location.href = `/track?order=${orderId}`;
+    }, 500);
   };
   const waLink=`https://wa.me/${shop?.whatsapp||'2348137717359'}?text=Hi%20I%20want%20to%20order%20from%20${shop?.name||'Jamoy'}`;
   return (
