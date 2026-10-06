@@ -28,6 +28,14 @@ export default function ProductsPage(){
   };
   const del=(id:string)=>{ if(!confirm('Delete?')) return; const u=products.filter(p=>p.id!==id); saveProducts(slug,u); setProducts(u); };
   return (
+    <>
+    <div style={{position:'fixed', top:0, left:0, right:0, zIndex:50, background:'white', borderBottom:'1px solid #eee', padding:'8px 12px', display:'flex', gap:'8px'}}>
+      <a href='/dashboard/jomal' style={{height:'36px', padding:'0 16px', borderRadius:'20px', background:'black', color:'white', display:'flex', alignItems:'center', fontSize:'12px', fontWeight:'bold', textDecoration:'none'}}>← Back to Dashboard</a>
+      <a href='/s/jomal' style={{height:'36px', padding:'0 16px', borderRadius:'20px', background:'white', border:'1px solid #ddd', display:'flex', alignItems:'center', fontSize:'12px', fontWeight:'bold', textDecoration:'none'}}>View Shop</a>
+      <a href='/dashboard/jomal/orders' style={{height:'36px', padding:'0 16px', borderRadius:'20px', background:'white', border:'1px solid #ddd', display:'flex', alignItems:'center', fontSize:'12px', fontWeight:'bold', textDecoration:'none'}}>Orders</a>
+    </div>
+    <div style={{height:'56px'}}></div>
+
     <div className='min-h-screen bg-[#FAF9F7] p-4'>
       <div className='max-w-[1100px] mx-auto'>
         <h1 className='font-bold'>Products jamoy ({products.length}) FIXED</h1>
