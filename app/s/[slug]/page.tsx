@@ -37,40 +37,26 @@ export default function ShopPage({params}:{params:{slug:string}}){
   const deliveryFee=shop?.deliveryFee||1500;
   const checkout=()=>{
     if(!customer.name || !customer.phone){ alert('Enter name and phone'); return; }
-    const orderId=`ORD-${Date.now()}`;
-    const order:any={
-      id:orderId,
+    const order:Order={
+      id:`ORD-${Date.now()}`,
       shopId:slug,
-      customerName:customer.name,
-      customerPhone:customer.phone,
-      customerAddress:customer.address,
-      customer:customer,
-      items:cart.map((c:any)=>({id:c.product.id, name:c.product.name, price:c.product.price, qty:c.qty})),
+      customer,
+      items:cart.map(c=>({id:c.product.id, name:c.product.name, price:c.product.price, qty:c.qty})),
       total:total+deliveryFee,
       deliveryFee,
       status:'Pending',
       payment:'Pending',
       delivery:'Pending',
       date:new Date().toISOString(),
-      createdAt:new Date().toISOString(),
-      paymentMethod:'Transfer',
-      viewedByOwner:false,
-      viewedByCustomer:false
+      paymentMethod:'Transfer'
     };
     const existing=getOrders(slug);
     saveOrders(slug, [...existing, order]);
-    const itemsText = cart.map((c:any)=>`${c.product.name} x${c.qty} = ₦${(c.product.price*c.qty).toLocaleString()}`).join('\n');
-    const msg = `🔔 NEW ORDER ${orderId}\n\nCustomer: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address}\n\nItems:\n${itemsText}\n\nTotal: ₦${(total+deliveryFee).toLocaleString()}\n\nTrack: ${typeof window!=='undefined'?window.location.origin:''}/track?order=${orderId}`;
-    const ownerPhone = (shop?.whatsapp||'2348137717359').replace(/[^0-9]/g,'');
-    const waUrl = `https://api.whatsapp.com/send?phone=${ownerPhone}&text=${encodeURIComponent(msg)}`;
     setCart([]);
     setShowCheckout(false);
     setShowCart(false);
-    try{ localStorage.removeItem(`cart_${slug}`); localStorage.setItem('last_wa', waUrl); }catch{}
-    alert(`✅ Order ${orderId} placed! Opening WhatsApp...`);
-    window.location.href = waUrl;
+    alert(`Order ${order.id} placed!`);
   };
-
   const waLink=`https://wa.me/${shop?.whatsapp||'2348137717359'}?text=Hi%20I%20want%20to%20order%20from%20${shop?.name||'Jamoy'}`;
   return (
     <div className='min-h-screen bg-white pb-[90px]'>
