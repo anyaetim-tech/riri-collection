@@ -45,7 +45,7 @@ export default function ShopPage({params}:{params:{slug:string}}){
       customerPhone:customer.phone,
       customerAddress:customer.address,
       customer:customer,
-      items:cart.map(c=>({id:c.product.id, name:c.product.name, price:c.product.price, qty:c.qty})),
+      items:cart.map((c:any)=>({id:c.product.id, name:c.product.name, price:c.product.price, qty:c.qty})),
       total:total+deliveryFee,
       deliveryFee,
       status:'Pending',
@@ -59,34 +59,19 @@ export default function ShopPage({params}:{params:{slug:string}}){
     };
     const existing=getOrders(slug);
     saveOrders(slug, [...existing, order]);
-    const itemsText = cart.map(c=>`${c.product.name} x${c.qty} = ₦${(c.product.price*c.qty).toLocaleString()}`).join('\n');
-    const msg = `🔔 NEW ORDER ${orderId}\n\nCustomer: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address}\n\nItems:\n${itemsText}\n\nDelivery: ₦${deliveryFee}\nTotal: ₦${(total+deliveryFee).toLocaleString()}\n\nTrack: ${window.location.origin}/track?order=${orderId}`;
+    const itemsText = cart.map((c:any)=>`${c.product.name} x${c.qty} = ₦${(c.product.price*c.qty).toLocaleString()}`).join('\n');
+    const msg = `🔔 NEW ORDER ${orderId}\n\nCustomer: ${customer.name}\nPhone: ${customer.phone}\nAddress: ${customer.address}\n\nItems:\n${itemsText}\n\nTotal: ₦${(total+deliveryFee).toLocaleString()}\n\nTrack: ${typeof window!=='undefined'?window.location.origin:''}/track?order=${orderId}`;
     const ownerPhone = (shop?.whatsapp||'2348137717359').replace(/[^0-9]/g,'');
-    // FIXED: Use api.whatsapp.com which works on all phones + direct href not blocked
     const waUrl = `https://api.whatsapp.com/send?phone=${ownerPhone}&text=${encodeURIComponent(msg)}`;
-    const waUrl2 = `https://wa.me/${ownerPhone}?text=${encodeURIComponent(msg)}`;
     setCart([]);
     setShowCheckout(false);
     setShowCart(false);
-    try{ localStorage.removeItem(`cart_${slug}`); }catch{}
-    // Save wa link for fallback button
-    localStorage.setItem('last_wa_link', waUrl);
-    localStorage.setItem('last_order_id', orderId);
-    alert(`✅ Order ${orderId} placed! Opening WhatsApp now...`);
-    // Use location.href - this ALWAYS opens WhatsApp on phone, window.open is blocked
+    try{ localStorage.removeItem(`cart_${slug}`); localStorage.setItem('last_wa', waUrl); }catch{}
+    alert(`✅ Order ${orderId} placed! Opening WhatsApp...`);
     window.location.href = waUrl;
-    // Fallback after 2 sec if not opened, try wa.me
-    setTimeout(()=>{ 
-      const a = document.createElement('a');
-      a.href = waUrl2;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-    }, 800);
   };
 
-
+  const waLink=`https://wa.me/${shop?.whatsapp||'2348137717359'}?text=Hi%20I%20want%20to%20order%20from%20${shop?.name||'Jamoy'}`;
   return (
     <div className='min-h-screen bg-white pb-[90px]'>
       <header className='sticky top-0 z-20 bg-white border-b h-[56px] px-4 flex items-center justify-between'>
