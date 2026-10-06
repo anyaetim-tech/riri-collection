@@ -1,1 +1,82 @@
-"use client"; import { useState, useEffect } from 'react'; import { DashboardShell } from '@/components/layout/DashboardShell'; import { Card } from '@/components/ui/card'; import { Button } from '@/components/ui/button'; import { Input, Label } from '@/components/ui/input'; import { Dialog } from '@/components/ui/dialog'; import { getProducts, saveProducts, Product } from '@/lib/store'; export default function ProductsPage({params}:{params:{slug:string}}){ const slug=params?.slug||'riri-collection'; const [products,setProducts]=useState<Product[]>([]); const [open,setOpen]=useState(false); const [form,setForm]=useState({name:'',price:'',stock:'',imageUrl:'',category:''}); const [mounted,setMounted]=useState(false); useEffect(()=>{ setMounted(true); if(!slug) return; setProducts(getProducts(slug)); },[slug]); useEffect(()=>{ if(mounted && slug) saveProducts(slug,products); },[products,slug,mounted]); const save=()=>{ if(!form.name||!form.price) return alert('Name price required'); const np:Product={id:Date.now().toString(),shopId:slug,name:form.name,sku:form.name.slice(0,3).toUpperCase()+'-'+Date.now().toString().slice(-3),price:Number(form.price),stock:Number(form.stock)||0,image:'👜',imageUrl:form.imageUrl,desc:'',category:form.category}; setProducts([np,...products]); setOpen(false); setForm({name:'',price:'',stock:'',imageUrl:'',category:''}); }; if(!mounted) return <div className='p-10'>Loading...</div>; return <DashboardShell shopSlug={slug} title='Products'><div className='flex justify-between items-center'><div className='flex items-center gap-3'><img src='/logo.png' className='h-8 w-8 rounded-xl object-contain bg-white border'/><h1 className='font-bold text-[18px]'>Products {slug} ({products.length})</h1><a href={`/s/${slug}`} className='text-[12px] font-bold border rounded-full px-3 py-1 bg-white hover:bg-gray-50'>🛍️ View Shop /s/{slug} →</a></div><Button onClick={()=>setOpen(true)} className='rounded-full bg-[#6B21A8]'>+ Add</Button></div><div className='mt-6 grid md:grid-cols-3 gap-5'>{products.map(p=><Card key={p.id} className='overflow-hidden'><div className='aspect-[4/3] bg-gray-50'>{p.imageUrl?<img src={p.imageUrl} className='h-full w-full object-cover'/>:<div className='h-full flex items-center justify-center text-4xl'>{p.image}</div>}</div><div className='p-4'><p className='font-bold text-[14px]'>{p.name}</p><p className='font-bold'>₦{p.price.toLocaleString()}</p></div></Card>)}</div><Dialog open={open} onClose={()=>setOpen(false)}><div className='p-7'><h2 className='font-bold text-[18px] flex items-center gap-2'><img src='/logo.png' className='h-6 w-6 rounded-lg object-contain'/>Add Product to {slug}</h2><div className='mt-6 space-y-4'><div><Label>Name *</Label><Input value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></div><div><Label>Price *</Label><Input type='number' value={form.price} onChange={e=>setForm({...form,price:e.target.value})}/></div><div><Label>Image</Label><Input value={form.imageUrl} onChange={e=>setForm({...form,imageUrl:e.target.value})} placeholder='https://...'/><input type='file' accept='image/*' onChange={e=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>setForm(prev=>({...prev,imageUrl:r.result as string})); r.readAsDataURL(f); }} className='mt-2 block w-full text-[12px]'/>{form.imageUrl&&<img src={form.imageUrl} className='mt-2 h-32 w-full object-cover rounded-xl border'/>}</div><Button onClick={save} className='w-full h-12 rounded-full bg-[#6B21A8]'>Save to /s/{slug}</Button></div></div></Dialog></DashboardShell> }
+"use client"
+import { useState, useEffect } from 'react'
+import { getProducts, saveProducts } from '@/lib/store'
+import { useParams } from 'next/navigation'
+import { Input, Label } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+
+export default function ProductsPage(){
+  const params=useParams()
+  const slug=params?.slug as string || 'jamoy'
+  const [products,setProducts]=useState<any[]>([])
+  const [form,setForm]=useState({name:'', price:'', imageUrl:''})
+
+  useEffect(()=>{ setProducts(getProducts(slug)) },[slug])
+
+  const reload=()=> setProducts(getProducts(slug))
+
+  const add=()=>{
+    if(!form.name ||!form.price) return
+    const np={id:Date.now().toString(), shopId:slug, name:form.name, sku:`SKU-${Date.now()}`, price:Number(form.price), stock:10, imageUrl:form.imageUrl||'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500'}
+    const updated=[...products, np]
+    saveProducts(slug, updated)
+    setProducts(updated)
+    setForm({name:'', price:'', imageUrl:''})
+  }
+
+  const del=(id:string)=>{
+    if(!confirm('Delete this product?')) return
+    const updated=products.filter(p=>p.id!==id)
+    saveProducts(slug, updated)
+    setProducts(updated)
+  }
+
+  const deleteAll=()=>{
+    if(!confirm(`Delete ALL ${products.length} products for /s/${slug}?`)) return
+    saveProducts(slug, [])
+    setProducts([])
+  }
+
+  return (
+    <div className='p-4 bg-[#FAF9F7] min-h-screen pb-20'>
+      <div className='flex items-center justify-between'>
+        <div>
+          <h1 className='font-bold text-'>Products • /s/{slug}</h1>
+          <p className='text- text-gray-500'>{products.length} products • Professional • Ready</p>
+        </div>
+        {products.length>0 && <button onClick={deleteAll} className='h-9 px-4 rounded-full bg-red-50 border border-red-200 text-red-600 text- font-bold'>🗑 Delete All</button>}
+      </div>
+
+      <div className='mt-4 bg-white rounded- border p-4 space-y-3'>
+        <div><Label>Name *</Label><Input value={form.name} onChange={e=>setForm({...form, name:e.target.value})} placeholder='Boss Bag Gold' className='mt-1'/></div>
+        <div><Label>Price *</Label><Input value={form.price} onChange={e=>setForm({...form, price:e.target.value})} placeholder='25000' className='mt-1'/></div>
+        <div><Label>Image URL</Label><Input value={form.imageUrl} onChange={e=>setForm({...form, imageUrl:e.target.value})} placeholder='https://...' className='mt-1'/></div>
+        <Button onClick={add} className='w-full'>Add Product</Button>
+      </div>
+
+      <div className='mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3'>
+        {products.map((p:any)=>(
+          <div key={p.id} className='rounded- bg-white border overflow-hidden flex flex-col'>
+            <div className='relative'>
+              <img src={p.imageUrl} className='h- w-full object-cover bg-gray-50'/>
+              <button onClick={()=>del(p.id)} className='absolute top-2 right-2 h-7 w-7 rounded-full bg-red-500 text-white flex items-center justify-center text-'>✕</button>
+            </div>
+            <div className='p-3 flex-1 flex flex-col'>
+              <p className='text- font-medium truncate'>{p.name}</p>
+              <p className='text- font-bold'>₦{p.price?.toLocaleString()}</p>
+              <div className='mt-2 flex gap-2'>
+                <button onClick={()=>del(p.id)} className='flex-1 h-8 rounded-full bg-red-50 border border-red-200 text-red-600 text- font-bold'>🗑 Delete</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {products.length===0 && (
+        <div className='mt-6 bg-white border border-dashed rounded- p-8 text-center'>
+          <p className='text- text-gray-500'>No products — add your Boss Bags</p>
+        </div>
+      )}
+    </div>
+  )
+}
